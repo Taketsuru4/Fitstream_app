@@ -1,0 +1,10 @@
+.grid-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 768px) {
+  .grid-hero {
+    grid-template-columns: 1.1fr 1fr;
+    align-items: center;
+  }
+}
