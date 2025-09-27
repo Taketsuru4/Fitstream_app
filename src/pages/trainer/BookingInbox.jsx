@@ -1,5 +1,5 @@
 import React from 'react'
-import { useApp } from '../../context/appContext'
+import { useApp } from '../../hooks/useApp'
 const currency = n => `€${Number(n).toFixed(2)}`
 export default function BookingInbox(){
   const { bookings } = useApp()

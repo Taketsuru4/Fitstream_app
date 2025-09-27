@@ -7,7 +7,7 @@ export default function ProfileEditor(){
   return (
     <section>
       <h2>Profile</h2>
-      <div style={{display:'grid', gap:8, gridTemplateColumns:'1fr 1fr', marginTop:12}}>
+      <div style={{display:'grid', gap:24, gridTemplateColumns:'1fr 1fr', marginTop:12}}>
         <div><label style={{fontSize:12}}>Name</label><input value={name} onChange={e=>setName(e.target.value)} style={{width:'100%', height:40, borderRadius:8, background:'rgba(255,255,255,.06)', border:'1px solid #333', color:'white', padding:'0 10px'}}/></div>
         <div><label style={{fontSize:12}}>Price (€)</label><input type="number" value={price} onChange={e=>setPrice(Number(e.target.value))} style={{width:'100%', height:40, borderRadius:8, background:'rgba(255,255,255,.06)', border:'1px solid #333', color:'white', padding:'0 10px'}}/></div>
       </div>

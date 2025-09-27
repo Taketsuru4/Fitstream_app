@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Card, Input, Badge, Textarea } from '../../components/ui'
-import { useApp } from '../../context/appContext'
+import { useApp } from '../../hooks/useApp'
 import Modal from '../../components/Modal'
 
 /**
  * Mobile‑first Messages with threads + chat + New Message modal
- * Tweaks: solid composer background, clearer textarea, fixed FAB placement
+ * Tweaks: semi‑transparent composer, modal blur, safe‑area padding, FABs above composer
  */
 export default function Messages(){
   const { messages = [], setMessages, user, TRAINERS = [] } = useApp()
@@ -85,14 +85,24 @@ export default function Messages(){
   return (
     <div className="fs-msg" style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 12 }}>
       <style>{`
+        :root{ --safe: env(safe-area-inset-bottom, 0px); }
         @media (max-width: 900px){
           .fs-msg{ grid-template-columns: 1fr; }
           .fs-threads{ display: ${openList ? 'block' : 'none'}; }
         }
-        /* Make composer solid and high-contrast */
-        .chat-footer{ position: sticky; bottom: 0; background: #0f1216; border-top: 1px solid rgba(255,255,255,.12); z-index: 1; }
-        .chat-input{ background:#12151b !important; border:1px solid rgba(255,255,255,.18) !important; color:#fff !important; }
+        /* Composer: semi-transparent, readable, respects safe area */
+        .chat-footer{ position: sticky; bottom: 0; background: rgba(15,18,22,.96); border-top: 1px solid rgba(255,255,255,.12); z-index: 1; backdrop-filter: blur(6px); padding-bottom: 8px; }
+        @supports (padding: max(0px)) { .chat-footer{ padding-bottom: max(8px, var(--safe)); } }
+        .chat-input{ background: rgba(18,21,27,.96) !important; border:1px solid rgba(255,255,255,.18) !important; color:#fff !important; backdrop-filter: blur(4px); }
         .chat-input::placeholder{ color:#9ca3af; }
+        /* Modal visual tweaks */
+        .modal-panel{ background: rgba(16,19,25,.96); backdrop-filter: blur(8px); border-radius: 12px; border: 1px solid rgba(255,255,255,.08); }
+        .modal-card{ background: rgba(18,21,27,.96); border: 1px solid rgba(255,255,255,.10); border-radius: 12px; backdrop-filter: blur(6px); }
+        /* Floating actions positioned above composer & safe area */
+        .fs-fab{ position: fixed; right: 16px; z-index: 50; display: flex; flex-direction: column; gap: 10px; }
+        .fs-fab .fs-btn{ box-shadow: 0 8px 26px rgba(0,0,0,.35); }
+        .fs-fab{ bottom: 112px; }
+        @supports (padding: max(0px)) { .fs-fab{ bottom: calc(112px + var(--safe)); } }
       `}</style>
 
       {/* Threads */}
@@ -117,14 +127,14 @@ export default function Messages(){
                 key={t.id}
                 onClick={()=>{ setActiveId(t.id); setOpenList(false) }}
                 style={{ textAlign:'left', border:'1px solid rgba(255,255,255,.14)', borderRadius:10,
-                  background: active?.id===t.id ? 'rgba(255,255,255,.10)' : 'rgba(255,255,255,.06)',
+                  background: active?.id===t.id ? 'rgba(7,7,7,.1)' : 'rgba(8,8,8,.06)',
                   color:'#fff', padding:12, cursor:'pointer' }}
               >
                 <div style={{ display:'flex', justifyContent:'space-between', gap:8 }}>
                   <strong style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.with}</strong>
                   <Badge tone="neutral">{new Date(t.ts||0).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</Badge>
                 </div>
-                <div style={{ fontSize:12, color:'#9ca3af', marginTop:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.last || ' '}</div>
+                <div style={{ fontSize:12, color:'#9ca3af', marginTop:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.last || ' '}</div>
               </button>
             ))}
             {filteredThreads.length===0 && <div style={{color:'#9ca3af'}}>No conversations.</div>}
@@ -139,15 +149,14 @@ export default function Messages(){
           subtitle={active ? 'Direct messages' : '—'}
           style={{ minHeight: 420, position:'relative' }}
           footer={(
-            <div className="chat-footer" style={{ padding: 8 }}>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:8 }}>
+            <div className="chat-footer">
+              <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:8, padding: 8 }}>
                 <Textarea
                   rows={2}
                   value={draft}
                   onChange={(e)=>setDraft(e.target.value)}
                   onKeyDown={onKeyDown}
                   placeholder="Write a message… (Enter to send, Shift+Enter for line)"
-                  style={{}} // keep API clean; styling via class below
                   className="chat-input"
                 />
                 <Button onClick={send} disabled={!draft.trim()}>Send</Button>
@@ -158,7 +167,7 @@ export default function Messages(){
           <div style={{ maxHeight: 400, overflow:'auto', display:'grid', gap:8, paddingBottom: 12 }}>
             {(active?.msgs || []).map(m => (
               <div key={m.id} style={{ justifySelf: m.role==='me' ? 'end' : 'start', background: m.role==='me' ? 'rgba(6,182,212,.20)' : 'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.14)', borderRadius: 12, padding: '8px 10px', maxWidth: '80%' }}>
-                <div style={{ fontSize: 12, color:'#9ca3af', marginBottom: 2 }}>{m.role==='me' ? (user?.name || 'Me') : (m.with || 'Contact')}</div>
+                <div style={{ fontSize: 12, color:'#52688d', marginBottom: 2 }}>{m.role==='me' ? (user?.name || 'Me') : (m.with || 'Contact')}</div>
                 <div>{m.text || m.last}</div>
               </div>
             ))}
@@ -166,8 +175,8 @@ export default function Messages(){
           </div>
         </Card>
 
-        {/* Mobile floating toggles (positioned above composer) */}
-        <div className="show-sm" style={{ position:'fixed', right:16, bottom:128, zIndex:50, display:'flex', flexDirection:'column', gap:10 }}>
+        {/* Mobile floating toggles */}
+        <div className="show-sm fs-fab">
           <Button variant="secondary" onClick={()=>setOpenList(v=>!v)}>Show Threads</Button>
           <Button variant="secondary" onClick={()=>setOpenNew(true)}>New Message</Button>
         </div>
@@ -175,23 +184,23 @@ export default function Messages(){
 
       {/* New Message modal */}
       <Modal open={openNew} onClose={()=>setOpenNew(false)} title="Start a new message">
-        <div style={{ display:'grid', gap:10 }}>
+        <div className="modal-panel" style={{ display:'grid', gap:10, padding:12 }}>
           <Input placeholder="Search trainers…" value={searchTrainer} onChange={(e)=>setSearchTrainer(e.target.value)} />
           <div style={{ display:'grid', gap:10, gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))' }}>
             {trainerList.map(t => (
-              <div key={t.id} style={{ border:'1px solid rgba(255,255,255,.14)', borderRadius:12, padding:12, background:'rgba(255,255,255,.06)' }}>
+              <div key={t.id} className="modal-card" style={{ padding:12 }}>
                 <img src={t.photo} alt={t.name} style={{ width:'100%', height:120, objectFit:'cover', borderRadius:8, marginBottom:8 }} />
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:8 }}>
                   <strong style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.name}</strong>
                   <Badge tone="neutral">★ {t.rating}</Badge>
                 </div>
-                <div style={{ color:'#9ca3af', fontSize:12, marginTop:4 }}>{t.location}{t.remote ? ' • Virtual' : ''}</div>
+                <div style={{ color:'#6c8fca', fontSize:12, marginTop:4 }}>{t.location}{t.remote ? ' • Virtual' : ''}</div>
                 <div style={{ display:'flex', gap:8, marginTop:10 }}>
                   <Button fullWidth onClick={()=>startThread(t)}>Message</Button>
                 </div>
               </div>
             ))}
-            {trainerList.length===0 && <div style={{ color:'#9ca3af' }}>No trainers found.</div>}
+            {trainerList.length===0 && <div style={{ color:'#738ebc' }}>No trainers found.</div>}
           </div>
         </div>
       </Modal>

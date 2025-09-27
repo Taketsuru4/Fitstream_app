@@ -1,23 +1,27 @@
-import React from 'react';
-import Topbar from './components/Topbar';
-import Footer from './components/Footer';
-import Landing from './pages/Landing';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import Discover from './pages/client/Discover';
-import Book from './pages/client/Book';
-import Messages from './pages/common/Messages';
-import Progress from './pages/client/Progress';
-import Payments from './pages/client/Payments';
-import Settings from './pages/common/Settings';
-import BookingInbox from './pages/trainer/BookingInbox';
-import AvailabilityManager from './pages/trainer/AvailabilityManager';
-import Payouts from './pages/trainer/Payouts';
-import ProfileEditor from './pages/trainer/ProfileEditor';
-import { AppProvider, useApp } from './context/appContext';
+import React from 'react'
+import Topbar from '../components/Topbar'
+import Footer from '../components/Footer'
+import Landing from './Landing'
+import Discover from './client/Discover'
+import Book from './client/Book'
+import Messages from './common/Messages'
+import Progress from './client/Progress'
+import Payments from './client/Payments'
+import Settings from './common/Settings'
+import BookingInbox from './trainer/BookingInbox'
+import AvailabilityManager from './trainer/AvailabilityManager'
+import Payouts from './trainer/Payouts'
+import ProfileEditor from './trainer/ProfileEditor'
+import { AppProvider } from '../context/appContext'
+import { useApp } from '../hooks/useApp'
+import { Routes, Route, Navigate } from 'react-router-dom'
+
+
+import AuthTest from '../AuthTest' // <-- src/AuthTest.tsx
 
 function AppShell() {
   const { user, role } = useApp()
-  const isClient = role === 'client' // why: route sets change by role
+  const isClient = role === 'client'
 
   if (!user) return <Navigate to="/" replace />
 
@@ -60,6 +64,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/app/*" element={<AppShell />} />
+        <Route path="/auth-test" element={<AuthTest />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppProvider>

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { useApp } from '../../context/appContext'
+import { useApp } from '../../hooks/useApp'
 import { Button, Card, Input, Badge } from '../../components/ui'
 
 const currency = (n) => `€${Number(n || 0).toFixed(2)}`

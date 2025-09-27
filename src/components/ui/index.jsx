@@ -9,7 +9,7 @@ import React from 'react'
 
 // ---- BUTTON ----
 export function Button({
-  as: Tag = 'button',
+  as: Tag = 'button', // eslint-disable-line no-unused-vars
   variant = 'primary', // 'primary' | 'secondary' | 'ghost' | 'danger'
   size = 'md', // 'sm' | 'md' | 'lg'
   fullWidth = false,
