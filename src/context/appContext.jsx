@@ -46,7 +46,6 @@ export function AppProvider({ children }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id)
         
         if (mounted) {
           setSession(session)
@@ -74,14 +73,11 @@ export function AppProvider({ children }) {
   // Load user profile and role from database
   const loadUserProfile = async (authUser) => {
     try {
-      console.log('Loading profile for user:', authUser.id)
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .single()
-
-      console.log('Profile query result:', { profile, error })
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading profile:', error)
