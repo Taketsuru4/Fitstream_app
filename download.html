@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitStream Symbol</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #0f2027, #203a43, #2c5364);
+      font-family: sans-serif;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #title, #subtitle, #cta {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      opacity: 0;
+      animation: fadeIn 2s ease-out forwards;
+    }
+    #title {
+      top: 70%;
+      font-weight: bold;
+      font-size: 2rem;
+      color: white;
+      text-shadow: 0 0 10px rgba(102,204,255,0.8);
+      animation-delay: 0.5s;
+    }
+    #subtitle {
+      top: 77%;
+      font-size: 1.2rem;
+      color: #aaddff;
+      text-shadow: 0 0 6px rgba(102,204,255,0.5);
+      animation-delay: 1.5s;
+    }
+    #cta {
+      top: 84%;
+      animation-delay: 2.5s;
+    }
+    #cta a {
+      text-decoration: none;
+    }
+    #cta button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(90deg, #66ccff, #3399ff);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 25px;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(102,204,255,0.8);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #cta button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(102,204,255,1);
+    }
+    #store-icon {
+      height: 20px;
+    }
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="title">FITSTREAM</div>
+  <div id="subtitle">Train. Track. Transform.</div>
+  <div id="cta">
+    <a id="downloadLink" href="#" target="_blank">
+      <button>
+        <img id="store-icon" src="" alt="Store Logo" />
+        Download Now
+      </button>
+    </a>
+  </div>
+  <script>
+    // Detect device and set download link + icon
+    const downloadLink = document.getElementById('downloadLink');
+    const storeIcon = document.getElementById('store-icon');
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+
+    if (/iPhone|iPad|iPod/i.test(userAgent)) {
+      downloadLink.href = 'https://apps.apple.com/app/apple-store/idXXXXXXXXX'; // App Store link
+      storeIcon.src = 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg';
+    } else if (/Android/i.test(userAgent)) {
+      downloadLink.href = 'https://play.google.com/store/apps/details?id=com.example.fitstream'; // Google Play link
+      storeIcon.src = 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Google_Play_Arrow_logo.svg';
+    } else {
+      downloadLink.href = 'https://fitstream.com'; // Default landing page
+      storeIcon.src = 'https://upload.wikimedia.org/wikipedia/commons/d/d0/Google_Play_Arrow_logo.svg';
+    }
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let angle = 0;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 100;
+
+    const weights = [];
+    for (let i = 0; i < 5; i++) {
+      const theta = (i / 5) * Math.PI * 2;
+      const x = radius * Math.cos(theta);
+      const y = radius * Math.sin(theta);
+      weights.push({ x, y });
+    }
+
+    function drawWeight(x, y, scale) {
+      ctx.save();
+      ctx.translate(centerX + x, centerY + y);
+      ctx.scale(scale, scale);
+      ctx.beginPath();
+      ctx.arc(0, 0, 15, 0, Math.PI * 2);
+      ctx.fillStyle = '#66ccff';
+      ctx.shadowColor = '#66ccff';
+      ctx.shadowBlur = 15;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawConnection(x1, y1, x2, y2) {
+      ctx.beginPath();
+      ctx.moveTo(centerX + x1, centerY + y1);
+      ctx.lineTo(centerX + x2, centerY + y2);
+      ctx.strokeStyle = 'rgba(102, 204, 255, 0.4)';
+      ctx.lineWidth = 6;
+      ctx.shadowColor = '#66ccff';
+      ctx.shadowBlur = 10;
+      ctx.stroke();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const rotated = weights.map(p => {
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        return {
+          x: p.x * cos - p.y * sin,
+          y: p.x * sin + p.y * cos
+        };
+      });
+
+      for (let i = 0; i < rotated.length; i++) {
+        const current = rotated[i];
+        const next = rotated[(i + 1) % rotated.length];
+        drawConnection(current.x, current.y, next.x, next.y);
+      }
+
+      rotated.forEach(p => drawWeight(p.x, p.y, 1));
+
+      angle += 0.01;
+      requestAnimationFrame(draw);
+    }
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+
+    draw();
+  </script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fitstream - Mobile Book Session</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .calendar-grid-mobile {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        .day-cell-mobile {
+            padding: 8px 4px;
+            border-radius: 8px;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+        .day-cell-mobile.available:hover {
+            background-color: #dbeafe;
+            border-color: #93c5fd;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        .day-cell-mobile.selected {
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 600;
+            border-color: #2563eb;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.4);
+        }
+        .time-slot-mobile {
+            padding: 8px 12px;
+            border-radius: 8px;
+            background-color: #e0f2fe;
+            color: #0c4a6e;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 -1px 0 rgba(0,0,0,0.05);
+            font-size: 0.9rem;
+        }
+        .time-slot-mobile:hover {
+            background-color: #a7d9f7;
+            transform: translateY(-1px);
+        }
+        .time-slot-mobile.selected {
+            background-color: #22c55e;
+            color: white;
+            box-shadow: 0 2px 4px rgba(34, 197, 94, 0.4);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-300 to-teal-300">
+    <div class="bg-white shadow-xl rounded-2xl p-6 max-w-sm w-full flex flex-col gap-5 transform transition-all duration-300 hover:scale-[1.01]">
+        <h1 class="text-3xl font-extrabold text-gray-800 text-center mb-4">Book Session</h1>
+
+        <!-- Month Navigation -->
+        <div class="flex justify-between items-center mb-4">
+            <button class="p-2 bg-gray-200 rounded-full hover:bg-gray-300 transition-colors duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <span class="text-xl font-bold text-gray-800">July 2025</span>
+            <button class="p-2 bg-gray-200 rounded-full hover:bg-gray-300 transition-colors duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Weekday Headers -->
+        <div class="calendar-grid-mobile text-gray-600 font-semibold text-xs mb-3">
+            <div>Sun</div>
+            <div>Mon</div>
+            <div>Tue</div>
+            <div>Wed</div>
+            <div>Thu</div>
+            <div>Fri</div>
+            <div>Sat</div>
+        </div>
+
+        <!-- Calendar Days -->
+        <div class="calendar-grid-mobile">
+            <!-- Filler days for previous month -->
+            <div class="day-cell-mobile text-gray-400">29</div>
+            <div class="day-cell-mobile text-gray-400">30</div>
+            <!-- Days of current month -->
+            <div class="day-cell-mobile">1</div>
+            <div class="day-cell-mobile">2</div>
+            <div class="day-cell-mobile">3</div>
+            <div class="day-cell-mobile">4</div>
+            <div class="day-cell-mobile available">5</div>
+            <div class="day-cell-mobile available">6</div>
+            <div class="day-cell-mobile available">7</div>
+            <div class="day-cell-mobile">8</div>
+            <div class="day-cell-mobile available">9</div>
+            <div class="day-cell-mobile available">10</div>
+            <div class="day-cell-mobile available">11</div>
+            <div class="day-cell-mobile available">12</div>
+            <div class="day-cell-mobile available selected">13</div> <!-- Selected Day -->
+            <div class="day-cell-mobile">14</div>
+            <div class="day-cell-mobile available">15</div>
+            <div class="day-cell-mobile available">16</div>
+            <div class="day-cell-mobile available">17</div>
+            <div class="day-cell-mobile">18</div>
+            <div class="day-cell-mobile available">19</div>
+            <div class="day-cell-mobile available">20</div>
+            <div class="day-cell-mobile available">21</div>
+            <div class="day-cell-mobile">22</div>
+            <div class="day-cell-mobile available">23</div>
+            <div class="day-cell-mobile available">24</div>
+            <div class="day-cell-mobile">25</div>
+            <div class="day-cell-mobile available">26</div>
+            <div class="day-cell-mobile available">27</div>
+            <div class="day-cell-mobile available">28</div>
+            <div class="day-cell-mobile">29</div>
+            <div class="day-cell-mobile">30</div>
+            <div class="day-cell-mobile">31</div>
+        </div>
+
+        <!-- Available Time Slots -->
+        <div class="mt-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-3">Available Slots for July 13th</h3>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="time-slot-mobile">09:00 AM - 10:00 AM</div>
+                <div class="time-slot-mobile">10:00 AM - 11:00 AM</div>
+                <div class="time-slot-mobile selected">11:00 AM - 12:00 PM</div> <!-- Selected Time Slot -->
+                <div class="time-slot-mobile">01:00 PM - 02:00 PM</div>
+                <div class="time-slot-mobile">02:00 PM - 03:00 PM</div>
+                <div class="time-slot-mobile">04:00 PM - 05:00 PM</div>
+            </div>
+        </div>
+
+        <button class="mt-8 px-6 py-3 bg-green-500 text-white font-bold text-lg rounded-xl shadow-lg hover:bg-green-600 transition-all duration-300 transform hover:-translate-y-1 hover:scale-105">
+            Confirm Booking
+        </button>
+    </div>
+</body>
+</html>

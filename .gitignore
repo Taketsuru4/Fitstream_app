@@ -15,11 +15,7 @@ build/
 .env.test.local
 .env.production.local
 
-# IDE files
-.vscode/
-.idea/
-
-# OS generated files
+# System files
 .DS_Store
 .DS_Store?
 ._*
@@ -28,5 +24,35 @@ build/
 ehthumbs.db
 Thumbs.db
 
-# Log files
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs
 *.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# Temporary folders
+tmp/
+temp/
