@@ -2,128 +2,35 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../hooks/useApp'
 import { supabase } from '../supabaseClient'
+import AuthModal from '../components/auth/AuthModal'
+import RoleSelectionModal from '../components/auth/RoleSelectionModal'
 
 export default function Landing(){
   const navigate = useNavigate()
-  const { login } = useApp()
+  const { user, loading, isAuthenticated } = useApp()
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authModalTab, setAuthModalTab] = useState('login')
+  const [roleModalOpen, setRoleModalOpen] = useState(false)
 
-  const [email, setEmail] = useState('')
-  const [role, setRole] = useState('client') // 'client' | 'trainer'
-  const [loading, setLoading] = useState(false)
-  const [msg, setMsg] = useState('')
-
-  const valid = useMemo(() => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email), [email])
-
-  // Remember role preference before leaving for OAuth or sending OTP
-  const rememberRolePref = () => {
-    try { localStorage.setItem('fitstream:rolePref', role) } catch (e) { console.error('Failed to save role preference', e) }
-  }
-
-  // Resolve final role after auth (prefers profile.role if set, else local pref)
-  const resolveRoleAfterAuth = useCallback(async (user) => {
-    let pref = null
-    try { pref = localStorage.getItem('fitstream:rolePref') || null } catch (e) { console.error('Failed to get role preference', e) }
-    const desired = pref === 'trainer' ? 'trainer' : role || 'client'
-
-    const { data: prof, error } = await supabase
-      .from('profiles')
-      .select('id, role, full_name')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (error) throw error
-
-    if (!prof?.role) {
-      const { error: updErr } = await supabase
-        .from('profiles')
-        .update({ role: desired })
-        .eq('id', user.id)
-      if (updErr) throw updErr
-      return { finalRole: desired, full_name: prof?.full_name }
-    }
-    return { finalRole: prof.role, full_name: prof.full_name }
-  }, [role])
-
-  // After successful auth/session present
-  const handlePostAuth = useCallback(async (user) => {
-    try {
-      const { finalRole, full_name } = await resolveRoleAfterAuth(user)
-
-      // clear one-shot pref
-      try { localStorage.removeItem('fitstream:rolePref') } catch (e) { console.error('Failed to remove role preference', e) }
-
-      login({
-        id: user.id,
-        email: user.email,
-        role: finalRole,
-        name: full_name || (finalRole === 'trainer' ? 'Coach' : 'Athlete'),
-      })
-
-      navigate('/app/' + (finalRole === 'client' ? 'discover' : 'inbox'), { replace: true })
-    } catch (e) {
-      console.error(e)
-      setMsg(e.message || 'Post-auth error')
-    }
-  }, [login, navigate, resolveRoleAfterAuth])
-
-  // Send magic link / OTP
-  const start = async () => {
-    try {
-      if (!valid) return alert('Enter a valid email')
-      setLoading(true)
-      setMsg('Sending sign-in link to your email...')
-
-      rememberRolePref()
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: window.location.origin,
-          data: { role_pref: role }
-        }
-      })
-      if (error) throw error
-      setMsg('✅ Check your email for the sign-in link.')
-    } catch (err) {
-      console.error(err)
-      setMsg(err.message || 'Something went wrong')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // OAuth providers
-  const signInWithGoogle = async () => {
-    rememberRolePref()
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
-        queryParams: { access_type: 'offline', prompt: 'consent' }
-      }
-    })
-    if (error) setMsg(error.message)
-  }
-
-  const signInWithFacebook = async () => {
-    rememberRolePref()
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'facebook',
-      options: { redirectTo: window.location.origin }
-    })
-    if (error) setMsg(error.message)
-  }
-
-  // Session listener (covers redirect back & refresh)
+  // Check if user exists but doesn't have a role set
   useEffect(() => {
-    const sub = supabase.auth.onAuthStateChange(async (_evt, session) => {
-      if (session?.user) await handlePostAuth(session.user)
-    })
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user) handlePostAuth(data.session.user)
-    })
-    return () => { sub?.data?.subscription?.unsubscribe?.() }
-  }, [handlePostAuth])
+    if (user && !loading && (!user.role || user.role === '')) {
+      setRoleModalOpen(true)
+    }
+  }, [user, loading])
+
+  // Redirect authenticated users to their appropriate dashboard
+  useEffect(() => {
+    if (isAuthenticated && user?.role) {
+      const path = user.role === 'trainer' ? 'inbox' : 'discover'
+      navigate(`/app/${path}`, { replace: true })
+    }
+  }, [isAuthenticated, user, navigate])
+
+  const openAuthModal = (tab) => {
+    setAuthModalTab(tab)
+    setAuthModalOpen(true)
+  }
 
   const revealRoot = useRef(null)
   useEffect(() => {
@@ -201,59 +108,23 @@ export default function Landing(){
       A single, elegant workflow for clients and coaches: discovery, scheduling, payments, progress, and messaging.
     </p>
 
-    {/* Επιλογή ρόλου – κεντραρισμένη */}
-    <div data-reveal style={{ display:'flex', gap:12, margin:'12px auto 18px', justifyContent:'center', flexWrap:'wrap' }}>
-      <button onClick={() => setRole('client')}
-              className={`btn ${role === 'client' ? 'btn-primary' : 'btn-secondary'}`}>
-        🏃‍♀️ I'm a Client
-      </button>
-      <button onClick={() => setRole('trainer')}
-              className={`btn ${role === 'trainer' ? 'btn-primary' : 'btn-secondary'}`}>
-        💪 I'm a Trainer
-      </button>
-    </div>
-
-    {/* Email form – ΠΛΗΡΩΣ κεντραρισμένο */}
-    <div data-reveal
-         style={{
-           display:'grid',
-           gridTemplateColumns:'1fr auto',
-           gap:12,
-           maxWidth:540,
-           margin:'0 auto'
-         }}>
-      <input
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="you@fitstream.app"
-        className="input"
-        type="email"
-        autoComplete="email"
-      />
-      <button
-        onClick={start}
-        disabled={!valid || loading}
-        className={`btn ${valid && !loading ? 'btn-primary' : 'btn-secondary'}`}
-        style={{ opacity: valid && !loading ? 1 : .6, cursor: valid && !loading ? 'pointer' : 'not-allowed' }}
+    {/* CTA Buttons */}
+    <div data-reveal style={{ display:'flex', gap:12, margin:'20px auto', justifyContent:'center', flexWrap:'wrap' }}>
+      <button 
+        onClick={() => openAuthModal('signup')}
+        className="btn btn-primary"
+        style={{ fontSize:'1rem', padding:'1rem 2rem' }}
       >
-        {loading ? 'Sending...' : 'Get Started'}
+        Get Started Free
+      </button>
+      <button 
+        onClick={() => openAuthModal('login')}
+        className="btn btn-secondary"
+        style={{ fontSize:'1rem', padding:'1rem 2rem' }}
+      >
+        Sign In
       </button>
     </div>
-
-    {/* OAuth κουμπιά – επίσης κεντραρισμένα */}
-    <div data-reveal style={{ display:'flex', gap:14, margin:'16px auto 10px', justifyContent:'center', flexWrap:'wrap' }}>
-      <button onClick={signInWithGoogle} className="btn btn-secondary">🔍 Continue with Google</button>
-      <button onClick={signInWithFacebook} className="btn btn-secondary">📘 Continue with Facebook</button>
-    </div>
-
-    {/* Status */}
-    {!!msg && (
-      <div data-reveal style={{ margin:'8px auto 0', maxWidth:540, padding:'10px 12px',
-                                borderRadius:10, background:'var(--bg-card)', border:'1px solid var(--border-primary)',
-                                color:'var(--text-secondary)', fontSize:14 }}>
-        {msg}
-      </div>
-    )}
 
     {/* Trust badges (κεντραρισμένα) */}
     <div data-reveal style={{ display:'flex', gap:14, flexWrap:'wrap', alignItems:'center', justifyContent:'center',
@@ -404,15 +275,35 @@ export default function Landing(){
             Join thousands of trainers and clients who have already transformed their fitness experience with FitStream.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button onClick={start} disabled={!valid || loading} className={`btn ${valid && !loading ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: '1rem', padding: '1rem 2rem' }}>
-              {loading ? 'Getting Started...' : 'Get Started Free'}
+            <button 
+              onClick={() => openAuthModal('signup')}
+              className="btn btn-primary" 
+              style={{ fontSize: '1rem', padding: '1rem 2rem' }}
+            >
+              Get Started Free
             </button>
-            <button className="btn btn-ghost" style={{ fontSize: '1rem', padding: '1rem 2rem' }}>
-              Learn More
+            <button 
+              onClick={() => openAuthModal('login')}
+              className="btn btn-ghost" 
+              style={{ fontSize: '1rem', padding: '1rem 2rem' }}
+            >
+              Sign In
             </button>
           </div>
         </div>
       </section>
+      
+      {/* Authentication Modals */}
+      <AuthModal 
+        isOpen={authModalOpen} 
+        onClose={() => setAuthModalOpen(false)} 
+        defaultTab={authModalTab} 
+      />
+      
+      <RoleSelectionModal 
+        isOpen={roleModalOpen} 
+        onClose={() => setRoleModalOpen(false)} 
+      />
     </div>
   )
 }

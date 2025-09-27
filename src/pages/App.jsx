@@ -20,10 +20,25 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import AuthTest from '../AuthTest' // <-- src/AuthTest.tsx
 
 function AppShell() {
-  const { user, role } = useApp()
-  const isClient = role === 'client'
+  const { user, loading, isAuthenticated, isClient, isTrainer } = useApp()
 
-  if (!user) return <Navigate to="/" replace />
+  // Show loading while authentication is being determined
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Redirect to landing if not authenticated
+  if (!isAuthenticated || !user) return <Navigate to="/" replace />
+
+  // Redirect if user doesn't have a role set
+  if (!user.role || user.role === '') return <Navigate to="/" replace />
 
   return (
     <>
