@@ -28,7 +28,7 @@ const RoleSelectionModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null
 
   return (
-    <Modal isOpen={isOpen} onClose={() => {}} title="Welcome to FitStream!">
+    <Modal open={isOpen} onClose={() => {}} title="Welcome to FitStream!">
       <div className="w-full max-w-md mx-auto text-center">
         <div className="mb-6">
           <h3 className="text-xl font-semibold text-white mb-2">

@@ -74,14 +74,32 @@ export function AppProvider({ children }) {
   // Load user profile and role from database
   const loadUserProfile = async (authUser) => {
     try {
+      console.log('Loading profile for user:', authUser.id)
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .single()
 
+      console.log('Profile query result:', { profile, error })
+
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading profile:', error)
+        // If profiles table doesn't exist, create basic user data
+        if (error.code === '42P01') {
+          console.warn('Profiles table not found, using basic user data')
+          const userData = {
+            id: authUser.id,
+            email: authUser.email,
+            full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0],
+            avatar_url: authUser.user_metadata?.avatar_url,
+            role: 'client' // default role
+          }
+          setUser(userData)
+          setRole(userData.role)
+          localStorage.setItem('fitstream:user', JSON.stringify(userData))
+          return
+        }
         return
       }
 
@@ -124,20 +142,24 @@ export function AppProvider({ children }) {
 
       if (error) throw error
 
-      // Create profile record
+      // Create profile record (if table exists)
       if (data.user && !error) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            email: data.user.email,
-            full_name: userData.full_name || email.split('@')[0],
-            role: userData.role || 'client',
-            avatar_url: userData.avatar_url
-          })
+        try {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              email: data.user.email,
+              full_name: userData.full_name || email.split('@')[0],
+              role: userData.role || 'client',
+              avatar_url: userData.avatar_url
+            })
 
-        if (profileError && profileError.code !== '23505') {
-          console.error('Error creating profile:', profileError)
+          if (profileError && profileError.code !== '23505' && profileError.code !== '42P01') {
+            console.error('Error creating profile:', profileError)
+          }
+        } catch (profileError) {
+          console.warn('Could not create profile record:', profileError)
         }
       }
 

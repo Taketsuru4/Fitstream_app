@@ -83,7 +83,7 @@ const AuthModal = ({ isOpen, onClose, defaultTab = 'login' }) => {
   if (!isOpen) return null
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="">
+    <Modal open={isOpen} onClose={onClose} title="">
       <div className="w-full max-w-md mx-auto">
         {/* Tab Headers */}
         <div className="flex mb-6 bg-gray-800 rounded-lg p-1">
