@@ -56,3 +56,16 @@ pids
 # Temporary folders
 tmp/
 temp/
+
+# Documentation files (local development only)
+*.md
+!README.md
+
+# Debug and test scripts (local development only)
+debug-*.js
+test-*.js
+check_triggers*.sql
+
+# Debug components (local development only)
+src/components/AuthLoadingDebug.jsx
+src/components/DevAuthBypassEnhanced.jsx
