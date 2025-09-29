@@ -19,9 +19,8 @@ import { useApp } from '../hooks/useApp'
 import { Routes, Route, Navigate } from 'react-router-dom'
 
 
-import AuthTest from '../AuthTest' // <-- src/AuthTest.tsx
-import AuthLoadingDebug from '../components/AuthLoadingDebug'
-import DevAuthBypassEnhanced from '../components/DevAuthBypassEnhanced'
+import DevAuthBypass from '../components/DevAuthBypass'
+import DevStateDebug from '../components/DevStateDebug'
 
 function AppShell() {
   const { user, loading, isAuthenticated, isClient, isTrainer } = useApp()
@@ -74,7 +73,6 @@ function AppShell() {
         </Routes>
       </main>
       <Footer />
-      <DevStateDebug />
     </>
   )
 }
@@ -86,10 +84,10 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/app/*" element={<AppShell />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/auth-test" element={<AuthTest />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <AuthLoadingDebug />
+      <DevAuthBypass />
+      <DevStateDebug />
     </AppProvider>
   )
 }
