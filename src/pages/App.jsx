@@ -14,6 +14,7 @@ import AvailabilityManager from './trainer/AvailabilityManager'
 import Payouts from './trainer/Payouts'
 import ProfileEditor from './trainer/ProfileEditor'
 import ResetPassword from '../components/auth/ResetPassword'
+import OAuthCallback from '../components/auth/OAuthCallback'
 import { AppProvider } from '../context/appContext'
 import { useApp } from '../hooks/useApp'
 import { Routes, Route, Navigate } from 'react-router-dom'
@@ -21,6 +22,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 
 import DevAuthBypass from '../components/DevAuthBypass'
 import DevStateDebug from '../components/DevStateDebug'
+import DevSampleTrainer from '../components/DevSampleTrainer'
 
 function AppShell() {
   const { user, loading, isAuthenticated, isClient, isTrainer } = useApp()
@@ -38,7 +40,9 @@ function AppShell() {
   }
 
   // Redirect to landing if not authenticated
-  if (!isAuthenticated || !user) return <Navigate to="/" replace />
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/" replace />
+  }
 
   // Redirect if user doesn't have a role set
   if (!user.role || user.role === '') return <Navigate to="/" replace />
@@ -83,11 +87,13 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/app/*" element={<AppShell />} />
+        <Route path="/auth/callback" element={<OAuthCallback />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <DevAuthBypass />
       <DevStateDebug />
+      <DevSampleTrainer />
     </AppProvider>
   )
 }

@@ -10,6 +10,13 @@
       "destination": "/index.html"
     }
   ],
+  "redirects": [
+    {
+      "source": "/app",
+      "destination": "/app/discover",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
