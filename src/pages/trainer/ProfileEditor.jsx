@@ -62,9 +62,14 @@ export default function ProfileEditor(){
   }, [user])
 
   const loadProfileData = async () => {
-    if (!user) return
+    if (!user) {
+      console.log('No user found, cannot load profile')
+      return
+    }
     
+    console.log('Loading profile for user:', user.id)
     setLoading(true)
+    
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
@@ -72,9 +77,59 @@ export default function ProfileEditor(){
         .eq('id', user.id)
         .single()
 
+      console.log('Profile query result:', { profile, error })
+
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading profile:', error)
+        setMessage(`Error loading profile: ${error.message}`)
         return
+      }
+      
+      if (error && error.code === 'PGRST116') {
+        console.log('Profile not found, creating new profile')
+        // Profile doesn't exist, create one
+        const newProfile = {
+          id: user.id,
+          email: user.email,
+          full_name: user.full_name || user.email?.split('@')[0],
+          role: 'trainer',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+        
+        console.log('Creating profile with data:', newProfile)
+        
+        const { error: insertError, data: insertData } = await supabase
+          .from('profiles')
+          .insert(newProfile)
+          .select()
+          
+        if (insertError) {
+          console.error('Error creating profile:', insertError)
+          setMessage(`Error creating profile: ${insertError.message}`)
+        } else {
+          console.log('Profile created successfully:', insertData)
+          // Set the created profile data
+          if (insertData && insertData[0]) {
+            const createdProfile = insertData[0]
+            setFormData({
+              full_name: createdProfile.full_name || '',
+              bio: createdProfile.bio || '',
+              avatar_url: createdProfile.avatar_url || '',
+              phone: createdProfile.phone || '',
+              location: createdProfile.location || '',
+              specialties: createdProfile.specialties || [],
+              hourly_rate: createdProfile.hourly_rate || '',
+              currency: createdProfile.currency || 'EUR',
+              years_experience: createdProfile.years_experience || '',
+              certifications: createdProfile.certifications || [],
+              languages: createdProfile.languages || [],
+              training_locations: createdProfile.training_locations || []
+            })
+            setProfileCompletion(createdProfile.profile_completion || 0)
+          }
+          return
+        }
       }
 
       if (profile) {
@@ -95,9 +150,10 @@ export default function ProfileEditor(){
         setProfileCompletion(profile.profile_completion || 0)
       }
     } catch (error) {
-      console.error('Error loading profile:', error)
-      setMessage('Failed to load profile data')
+      console.error('Error in loadProfileData:', error)
+      setMessage(`Failed to load profile data: ${error.message}`)
     } finally {
+      console.log('Setting loading to false')
       setLoading(false)
     }
   }

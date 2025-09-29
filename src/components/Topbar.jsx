@@ -2,6 +2,7 @@
 import React from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useApp } from '../hooks/useApp'
+import { useBooking } from '../hooks/useBooking'
 
 function initialsFromEmail(email) {
   if (!email) return 'FS'
@@ -13,12 +14,28 @@ function initialsFromEmail(email) {
 }
 
 export default function Topbar() {
-  const { user, logout } = useApp()
+  const { user, logout, isTrainer, isClient } = useApp()
   const navigate = useNavigate()
+  
+  // Get booking data for notifications (only for trainers)
+  const { pendingBookings } = useBooking()
+  const pendingCount = isTrainer ? pendingBookings.length : 0
+
+  // Notification badge component
+  const NotificationBadge = ({ count, children }) => (
+    <div className="relative">
+      {children}
+      {count > 0 && (
+        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+          {count > 99 ? '99+' : count}
+        </span>
+      )}
+    </div>
+  )
 
   const handleLogout = async () => {
     await logout()
-    navigate('/', { replace: true })
+    window.location.href = '/' // Force full redirect to landing page
   }
 
   return (
@@ -26,28 +43,61 @@ export default function Topbar() {
       <div className="mx-auto max-w-6xl px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           {/* Left: Brand */}
-          <Link to="/" className="flex items-center gap-2">
+          <button 
+            onClick={() => window.location.href = '/'} 
+            className="flex items-center gap-2 hover:opacity-90 transition-opacity cursor-pointer bg-transparent border-none p-0"
+            title="Go to Home"
+          >
             <img src="/logo/fitstream.png" alt="FitStream" className="h-8 w-8 rounded" />
             <span className="text-white text-lg font-extrabold tracking-tight">FitStream</span>
-          </Link>
+          </button>
 
-          {/* Center: Nav (can extend later) */}
+          {/* Center: Nav - Role-based navigation */}
           <nav className="hidden md:flex items-center gap-4 text-slate-200/90">
-            <Link to="/app/discover" className="hover:text-white transition">Discover</Link>
-            <Link to="/app/messages" className="hover:text-white transition">Messages</Link>
-            <Link to="/app/settings" className="hover:text-white transition">Settings</Link>
+            {isTrainer ? (
+              // Trainer Navigation
+              <>
+                <NotificationBadge count={pendingCount}>
+                  <Link to="/app/inbox" className="hover:text-white transition">📥 Inbox</Link>
+                </NotificationBadge>
+                <Link to="/app/availability" className="hover:text-white transition">📅 Availability</Link>
+                <Link to="/app/profile" className="hover:text-white transition">👤 Profile</Link>
+                <Link to="/app/payouts" className="hover:text-white transition">💰 Payouts</Link>
+                <Link to="/app/messages" className="hover:text-white transition">💬 Messages</Link>
+                <Link to="/app/settings" className="hover:text-white transition">⚙️ Settings</Link>
+              </>
+            ) : (
+              // Client Navigation  
+              <>
+                <Link to="/app/discover" className="hover:text-white transition">🔍 Discover</Link>
+                <Link to="/app/book" className="hover:text-white transition">📅 Book Session</Link>
+                <Link to="/app/progress" className="hover:text-white transition">📊 Progress</Link>
+                <Link to="/app/payments" className="hover:text-white transition">💳 Payments</Link>
+                <Link to="/app/messages" className="hover:text-white transition">💬 Messages</Link>
+                <Link to="/app/settings" className="hover:text-white transition">⚙️ Settings</Link>
+              </>
+            )}
           </nav>
 
           {/* Right: Auth actions */}
           {user ? (
             <div className="flex items-center gap-3">
-              <span className="hidden sm:block text-sm text-slate-300">{user.email}</span>
+              <div className="hidden sm:block text-right">
+                <div className="text-sm text-slate-300">{user.full_name || user.email}</div>
+                <div className="text-xs text-slate-400 capitalize">
+                  {isTrainer ? '🏅 Trainer' : '👤 Client'}
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <div
-                  title={user.email}
-                  className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-cyan-500 to-indigo-500 text-white text-sm font-bold"
+                  title={`${user.full_name || user.email} (${user.role})`}
+                  className={`grid h-9 w-9 place-items-center rounded-full text-white text-sm font-bold ${
+                    isTrainer 
+                      ? 'bg-gradient-to-br from-emerald-500 to-teal-500' 
+                      : 'bg-gradient-to-br from-cyan-500 to-indigo-500'
+                  }`}
                 >
-                  {initialsFromEmail(user.email)}
+                  {user.full_name ? user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : initialsFromEmail(user.email)}
                 </div>
                 <button
                   onClick={handleLogout}
@@ -69,12 +119,32 @@ export default function Topbar() {
           )}
         </div>
 
-        {/* Mobile nav */}
+        {/* Mobile nav - Role-based */}
         <div className="mt-2 md:hidden">
-          <nav className="flex items-center gap-4 overflow-x-auto text-slate-200/90">
-            <Link to="/app/discover" className="hover:text-white transition">Discover</Link>
-            <Link to="/app/messages" className="hover:text-white transition">Messages</Link>
-            <Link to="/app/settings" className="hover:text-white transition">Settings</Link>
+          <nav className="flex items-center gap-3 overflow-x-auto text-slate-200/90 text-sm">
+            {isTrainer ? (
+              // Trainer Mobile Navigation
+              <>
+                <NotificationBadge count={pendingCount}>
+                  <Link to="/app/inbox" className="hover:text-white transition whitespace-nowrap">📥 Inbox</Link>
+                </NotificationBadge>
+                <Link to="/app/availability" className="hover:text-white transition whitespace-nowrap">📅 Schedule</Link>
+                <Link to="/app/profile" className="hover:text-white transition whitespace-nowrap">👤 Profile</Link>
+                <Link to="/app/payouts" className="hover:text-white transition whitespace-nowrap">💰 Payouts</Link>
+                <Link to="/app/messages" className="hover:text-white transition whitespace-nowrap">💬 Messages</Link>
+                <Link to="/app/settings" className="hover:text-white transition whitespace-nowrap">⚙️ Settings</Link>
+              </>
+            ) : (
+              // Client Mobile Navigation
+              <>
+                <Link to="/app/discover" className="hover:text-white transition whitespace-nowrap">🔍 Discover</Link>
+                <Link to="/app/book" className="hover:text-white transition whitespace-nowrap">📅 Book</Link>
+                <Link to="/app/progress" className="hover:text-white transition whitespace-nowrap">📊 Progress</Link>
+                <Link to="/app/payments" className="hover:text-white transition whitespace-nowrap">💳 Payments</Link>
+                <Link to="/app/messages" className="hover:text-white transition whitespace-nowrap">💬 Messages</Link>
+                <Link to="/app/settings" className="hover:text-white transition whitespace-nowrap">⚙️ Settings</Link>
+              </>
+            )}
           </nav>
         </div>
       </div>

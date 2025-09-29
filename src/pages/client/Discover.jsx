@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react'
-import { TRAINERS } from '../../data/trainers'
+import React, { useState, useEffect } from 'react'
+import { supabase } from '../../supabaseClient'
 import { Button, Card, Input, Badge } from '../../components/ui'
 
 const currency = (n) => `€${Number(n).toFixed(2)}`
@@ -7,37 +7,100 @@ const currency = (n) => `€${Number(n).toFixed(2)}`
 export default function Discover() {
   const [q, setQ] = useState('')
   const [activeTags, setActiveTags] = useState([])
-  const [sort, setSort] = useState('relevance') // relevance | price-asc | price-desc | rating-desc
+  const [sort, setSort] = useState('rating') // rating | price-asc | price-desc | experience
+  const [trainers, setTrainers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [tags, setTags] = useState([])
 
-  // Build a small tag cloud from specialties
-  const tags = useMemo(() => {
-    const s = new Set()
-    TRAINERS.forEach(t => t.specialties.forEach(x => s.add(x)))
-    return Array.from(s).sort()
+  // Load trainers from database
+  useEffect(() => {
+    loadTrainers()
   }, [])
-
-  const filtered = useMemo(() => {
-    const term = q.trim().toLowerCase()
-    let list = TRAINERS.filter(t => {
-      const textMatch = !term ||
-        t.name.toLowerCase().includes(term) ||
-        t.location.toLowerCase().includes(term) ||
-        t.specialties.join(' ').toLowerCase().includes(term)
-      const tagMatch = activeTags.length === 0 || activeTags.every(tag => t.specialties.includes(tag))
-      return textMatch && tagMatch
-    })
-
-    switch (sort) {
-      case 'price-asc':   list = list.slice().sort((a,b)=>a.price-b.price); break
-      case 'price-desc':  list = list.slice().sort((a,b)=>b.price-a.price); break
-      case 'rating-desc': list = list.slice().sort((a,b)=>b.rating-a.rating); break
-      default: break // relevance keeps original order
-    }
-    return list
+  
+  // Load trainers when filters change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadTrainers()
+    }, 300) // Debounce search
+    
+    return () => clearTimeout(timer)
   }, [q, activeTags, sort])
+  
+  const loadTrainers = async () => {
+    try {
+      setLoading(true)
+      
+      let query = supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'trainer')
+        .gte('profile_completion', 10)
+      
+      // Apply search filter
+      if (q.trim()) {
+        query = query.or(`full_name.ilike.%${q.trim()}%,location.ilike.%${q.trim()}%,bio.ilike.%${q.trim()}%`)
+      }
+      
+      // Apply specialty filter
+      if (activeTags.length > 0) {
+        // Filter trainers that have ALL selected specialties
+        const specialtyFilters = activeTags.map(tag => `specialties.cs.{"${tag}"}`)
+        query = query.and(specialtyFilters.join(','))
+      }
+      
+      // Apply sorting
+      switch (sort) {
+        case 'price-asc':
+          query = query.order('hourly_rate', { ascending: true, nullsLast: true })
+          break
+        case 'price-desc':
+          query = query.order('hourly_rate', { ascending: false, nullsLast: true })
+          break
+        case 'experience':
+          query = query.order('years_experience', { ascending: false, nullsLast: true })
+          break
+        case 'rating':
+        default:
+          query = query.order('rating', { ascending: false })
+          break
+      }
+      
+      const { data, error } = await query
+      
+      if (error) {
+        console.error('Error loading trainers:', error)
+        return
+      }
+      
+      setTrainers(data || [])
+      
+      // Build tags from all trainers' specialties
+      const allSpecialties = new Set()
+      data?.forEach(trainer => {
+        trainer.specialties?.forEach(specialty => allSpecialties.add(specialty))
+      })
+      setTags(Array.from(allSpecialties).sort())
+      
+    } catch (error) {
+      console.error('Error in loadTrainers:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const toggleTag = (tag) => {
     setActiveTags((prev) => prev.includes(tag) ? prev.filter(t=>t!==tag) : [...prev, tag])
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Finding trainers for you...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -59,10 +122,10 @@ export default function Discover() {
               onChange={(e)=>setSort(e.target.value)}
               style={{ height: 40, borderRadius: 10, border:'1px solid rgba(255,255,255,.22)', background:'rgba(255,255,255,.08)', color:'#fff', padding:'0 10px' }}
             >
-              <option value="relevance">Relevance</option>
-              <option value="rating-desc">Rating</option>
+              <option value="rating">Top Rated</option>
               <option value="price-asc">Price (low → high)</option>
               <option value="price-desc">Price (high → low)</option>
+              <option value="experience">Most Experience</option>
             </select>
           </label>
         </div>
@@ -89,41 +152,81 @@ export default function Discover() {
 
       {/* Results */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:16, marginTop:16 }}>
-        {filtered.map((t) => (
+        {trainers.map((trainer) => (
           <Card
-            key={t.id}
+            key={trainer.id}
             title={(
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap:8, flexWrap:'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                  <span style={{ fontWeight: 800, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.name}</span>
-                  <Badge tone="neutral">★ {t.rating} ({t.reviews})</Badge>
+                  <span style={{ fontWeight: 800, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{trainer.full_name}</span>
+                  <Badge tone="neutral">★ {trainer.rating || '5.0'} ({trainer.total_reviews || 0})</Badge>
                 </div>
-                <div style={{ fontWeight: 800 }}>{currency(t.price)}</div>
+                <div style={{ fontWeight: 800 }}>
+                  {trainer.hourly_rate ? 
+                    `${trainer.currency === 'USD' ? '$' : trainer.currency === 'GBP' ? '£' : '€'}${trainer.hourly_rate}` : 
+                    'Contact'
+                  }
+                </div>
               </div>
             )}
-            subtitle={`${t.location}${t.remote ? ' • Virtual' : ''}`}
+            subtitle={`${trainer.location || 'Location TBD'}${trainer.years_experience ? ` • ${trainer.years_experience}y exp.` : ''}`}
           >
-            <img
-              src={t.photo}
-              alt={t.name}
-              style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 10, marginBottom: 10 }}
-            />
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-              {t.specialties.map((s) => (
-                <Badge key={s}>{s}</Badge>
-              ))}
-            </div>
-            <p style={{ color: '#cbd5e1', fontSize: 14, margin: 0 }}>{t.bio}</p>
+            {trainer.avatar_url ? (
+              <img
+                src={trainer.avatar_url}
+                alt={trainer.full_name}
+                style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 10, marginBottom: 10 }}
+                onError={(e) => {
+                  e.target.src = 'https://images.unsplash.com/photo-1594737625785-c38e6c310c05?auto=format&fit=crop&w=800&q=80'
+                }}
+              />
+            ) : (
+              <div style={{ width: '100%', height: 160, background: '#374151', borderRadius: 10, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem' }}>
+                👤
+              </div>
+            )}
+            
+            {trainer.specialties && trainer.specialties.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {trainer.specialties.slice(0, 3).map((specialty) => (
+                  <Badge key={specialty}>{specialty}</Badge>
+                ))}
+                {trainer.specialties.length > 3 && (
+                  <Badge tone="neutral">+{trainer.specialties.length - 3} more</Badge>
+                )}
+              </div>
+            )}
+            
+            {trainer.bio && (
+              <p style={{ color: '#cbd5e1', fontSize: 14, margin: '0 0 10px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                {trainer.bio}
+              </p>
+            )}
+            
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop: 12 }}>
-              <Button variant="secondary" onClick={() => alert(`Viewing ${t.name}`)}>View Profile</Button>
+              <Button variant="secondary" onClick={() => alert(`Viewing ${trainer.full_name}`)}>View Profile</Button>
               <Button onClick={() => window.location.assign('/app/book')}>Book</Button>
             </div>
           </Card>
         ))}
       </div>
 
-      {filtered.length === 0 && (
-        <p style={{ marginTop: 12, color: '#9ca3b8' }}>No trainers match your search.</p>
+      {trainers.length === 0 && !loading && (
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">🔍</div>
+          <h3 className="text-xl font-semibold text-white mb-2">No trainers found</h3>
+          <p className="text-gray-400 mb-4">
+            {q || activeTags.length > 0 
+              ? 'Try adjusting your search or filters' 
+              : 'No trainers have completed their profiles yet'
+            }
+          </p>
+          {(q || activeTags.length > 0) && (
+            <Button variant="secondary" onClick={() => { setQ(''); setActiveTags([]) }}>
+              Clear Filters
+            </Button>
+          )}
+        </div>
       )}
     </section>
   )

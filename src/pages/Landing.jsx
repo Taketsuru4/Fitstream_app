@@ -4,7 +4,8 @@ import { useApp } from '../hooks/useApp'
 import { supabase } from '../supabaseClient'
 import AuthModal from '../components/auth/AuthModal'
 import RoleSelectionModal from '../components/auth/RoleSelectionModal'
-import AuthDebug from '../components/AuthDebug'
+import DevAuthBypass from '../components/DevAuthBypassEnhanced'
+
 
 export default function Landing(){
   const navigate = useNavigate()
@@ -306,8 +307,9 @@ export default function Landing(){
         onClose={() => setRoleModalOpen(false)} 
       />
       
-      {/* Debug Panel - only in development */}
-      {import.meta.env.DEV && <AuthDebug />}
+    
+      
+     
     </div>
   )
 }
