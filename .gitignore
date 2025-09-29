@@ -69,3 +69,4 @@ check_triggers*.sql
 # Debug components (local development only)
 src/components/AuthLoadingDebug.jsx
 src/components/DevAuthBypassEnhanced.jsx
+.vercel
