@@ -3,6 +3,7 @@ import Topbar from '../components/Topbar'
 import Footer from '../components/Footer'
 import Landing from './Landing'
 import Discover from './client/Discover'
+import TrainerProfile from './client/TrainerProfile'
 import Book from './client/Book'
 import Messages from './common/Messages'
 import Progress from './client/Progress'
@@ -12,12 +13,15 @@ import BookingInbox from './trainer/BookingInbox'
 import AvailabilityManager from './trainer/AvailabilityManager'
 import Payouts from './trainer/Payouts'
 import ProfileEditor from './trainer/ProfileEditor'
+import ResetPassword from '../components/auth/ResetPassword'
 import { AppProvider } from '../context/appContext'
 import { useApp } from '../hooks/useApp'
 import { Routes, Route, Navigate } from 'react-router-dom'
 
 
 import AuthTest from '../AuthTest' // <-- src/AuthTest.tsx
+import AuthLoadingDebug from '../components/AuthLoadingDebug'
+import DevAuthBypassEnhanced from '../components/DevAuthBypassEnhanced'
 
 function AppShell() {
   const { user, loading, isAuthenticated, isClient, isTrainer } = useApp()
@@ -48,6 +52,7 @@ function AppShell() {
           {isClient ? (
             <>
               <Route path="discover" element={<Discover />} />
+              <Route path="trainer/:trainerId" element={<TrainerProfile />} />
               <Route path="book" element={<Book />} />
               <Route path="messages" element={<Messages />} />
               <Route path="progress" element={<Progress />} />
@@ -69,6 +74,7 @@ function AppShell() {
         </Routes>
       </main>
       <Footer />
+      <DevStateDebug />
     </>
   )
 }
@@ -79,9 +85,11 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/app/*" element={<AppShell />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/auth-test" element={<AuthTest />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <AuthLoadingDebug />
     </AppProvider>
   )
 }
