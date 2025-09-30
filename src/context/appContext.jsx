@@ -1,5 +1,6 @@
 import React, { createContext, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { sendWelcomeEmail } from '../services/emailService'
 
 export const AppCtx = createContext(null) // eslint-disable-line react-refresh/only-export-components
 
@@ -318,6 +319,15 @@ export function AppProvider({ children }) {
             } else {
               console.log('Profile created successfully:', createResult)
               profileResult = createResult
+              
+              // Send welcome email after successful profile creation
+              try {
+                await sendWelcomeEmail(data.user.email, fullName, role)
+                console.log('Welcome email sent successfully')
+              } catch (emailError) {
+                console.error('Failed to send welcome email:', emailError)
+                // Don't fail signup if email fails
+              }
             }
           }
           

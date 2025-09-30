@@ -23,6 +23,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import DevAuthBypass from '../components/DevAuthBypass'
 import DevStateDebug from '../components/DevStateDebug'
 import DevSampleTrainer from '../components/DevSampleTrainer'
+import EmailTester from '../components/EmailTester'
 
 function AppShell() {
   const { user, loading, isAuthenticated, isClient, isTrainer } = useApp()
@@ -94,6 +95,7 @@ export default function App() {
       <DevAuthBypass />
       <DevStateDebug />
       <DevSampleTrainer />
+      <EmailTester />
     </AppProvider>
   )
 }
