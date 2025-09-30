@@ -92,10 +92,14 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <DevAuthBypass />
-      <DevStateDebug />
-      <DevSampleTrainer />
-      <EmailTester />
+      {import.meta.env.DEV && (
+        <>
+          <DevAuthBypass />
+          <DevStateDebug />
+          <DevSampleTrainer />
+          <EmailTester />
+        </>
+      )}
     </AppProvider>
   )
 }
