@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { supabase } from '../../supabaseClient'
 import { Button, Card, Input, Badge } from '../../components/ui'
+import { TrainerService } from '../../services/trainerService'
 
 const currency = (n) => `€${Number(n).toFixed(2)}`
 
@@ -26,121 +26,54 @@ export default function Discover() {
     return () => clearTimeout(timer)
   }, [q, activeTags, sort])
   
-  // Mock trainers for testing when database is empty
-  const mockTrainers = [
-    {
-      id: 'mock-1',
-      full_name: 'Dimitris Komninos',
-      bio: 'Πιστοποιημένος προπονητής με εξειδίκευση στην αύξηση μυικής μάζας και functional training. 8 χρόνια εμπειρίας με επιτυχημένα αποτελέσματα. Διαθέσιμος για online και δια ζώσης προπονήσεις στην Αθήνα.',
-      avatar_url: 'https://images.unsplash.com/photo-1567013127542-490d757e51cd?auto=format&fit=crop&w=800&q=80',
-      location: 'Αθήνα, Ελλάδα',
-      specialties: ['Strength Training', 'Muscle Building', 'Functional Training', 'Weight Loss'],
-      hourly_rate: 45,
-      currency: 'EUR',
-      years_experience: 8,
-      rating: 4.8,
-      total_reviews: 42,
-      total_sessions: 156,
-      profile_completion: 95
-    },
-    {
-      id: 'mock-2', 
-      full_name: 'Maria Papadopoulou',
-      bio: 'Yoga και Pilates instructor με passion για την ευεξία. Εξειδικεύομαι σε stress management και flexibility training. 5 χρόνια εμπειρίας με holistic προσέγγιση.',
-      avatar_url: 'https://images.unsplash.com/photo-1599058917212-d750089bc07f?auto=format&fit=crop&w=800&q=80',
-      location: 'Θεσσαλονίκη, Ελλάδα',
-      specialties: ['Yoga', 'Pilates', 'Flexibility', 'Stress Management'],
-      hourly_rate: 35,
-      currency: 'EUR',
-      years_experience: 5,
-      rating: 4.9,
-      total_reviews: 28,
-      total_sessions: 89,
-      profile_completion: 88
-    },
-    {
-      id: 'mock-3',
-      full_name: 'Alex Johnson',
-      bio: 'HIIT and cardio specialist focused on fat loss and athletic performance. International experience with top-tier athletes. Available for online sessions worldwide.',
-      avatar_url: 'https://images.unsplash.com/photo-1594737625785-c38e6c310c05?auto=format&fit=crop&w=800&q=80',
-      location: 'London, UK',
-      specialties: ['HIIT', 'Cardio', 'Weight Loss', 'Athletic Performance'],
-      hourly_rate: 65,
-      currency: 'EUR',
-      years_experience: 12,
-      rating: 4.7,
-      total_reviews: 156,
-      total_sessions: 340,
-      profile_completion: 92
-    }
-  ]
+  // Removed mock trainers: always show real data from the database
 
   const loadTrainers = async () => {
     try {
       setLoading(true)
-      
-      let query = supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'trainer')
-        .gte('profile_completion', 10)
-      
-      // Apply search filter
-      if (q.trim()) {
-        query = query.or(`full_name.ilike.%${q.trim()}%,location.ilike.%${q.trim()}%,bio.ilike.%${q.trim()}%`)
-      }
-      
-      // Apply specialty filter
-      if (activeTags.length > 0) {
-        // Filter trainers that have ALL selected specialties
-        const specialtyFilters = activeTags.map(tag => `specialties.cs.{"${tag}"}`)
-        query = query.and(specialtyFilters.join(','))
-      }
-      
-      // Apply sorting
-      switch (sort) {
-        case 'price-asc':
-          query = query.order('hourly_rate', { ascending: true, nullsLast: true })
-          break
-        case 'price-desc':
-          query = query.order('hourly_rate', { ascending: false, nullsLast: true })
-          break
-        case 'experience':
-          query = query.order('years_experience', { ascending: false, nullsLast: true })
-          break
-        case 'rating':
-        default:
-          query = query.order('rating', { ascending: false })
-          break
-      }
-      
-      const { data, error } = await query
-      
-      if (error) {
-        console.error('Error loading trainers:', error)
-        // Use mock data if database fails
-        setTrainers(mockTrainers)
-        const allSpecialties = new Set()
-        mockTrainers.forEach(trainer => {
-          trainer.specialties?.forEach(specialty => allSpecialties.add(specialty))
-        })
-        setTags(Array.from(allSpecialties).sort())
-        return
-      }
-      
-      // If no trainers in database, use mock data for demo
-      let trainersToShow = data && data.length > 0 ? data : mockTrainers
+
+      // Map UI sort to service sort values
+      const sortBy =
+        sort === 'price-asc' ? 'price_asc' :
+        sort === 'price-desc' ? 'price_desc' :
+        sort === 'experience' ? 'experience' : 'rating'
+
+      const { trainers: results } = await TrainerService.discoverTrainers({
+        search: q,
+        specialties: activeTags,
+        sortBy,
+        limit: 50
+      })
+
+      // Convert to the shape this page expects
+      const trainersToShow = (results || []).map(t => ({
+        id: t.id,
+        full_name: t.name,
+        avatar_url: t.photo,
+        specialties: t.specialties,
+        rating: t.rating,
+        total_reviews: t.reviews,
+        total_sessions: t.sessions,
+        location: t.location,
+        hourly_rate: t.price,
+        currency: t.currency,
+        bio: t.bio,
+        years_experience: t.experience
+      }))
+
       setTrainers(trainersToShow)
-      
-      // Build tags from all trainers' specialties
+
+      // Build tags from specialties
       const allSpecialties = new Set()
-      trainersToShow?.forEach(trainer => {
+      trainersToShow.forEach(trainer => {
         trainer.specialties?.forEach(specialty => allSpecialties.add(specialty))
       })
       setTags(Array.from(allSpecialties).sort())
-      
+
     } catch (error) {
       console.error('Error in loadTrainers:', error)
+      setTrainers([])
+      setTags([])
     } finally {
       setLoading(false)
     }
