@@ -99,7 +99,7 @@ export default function Landing(){
     <div data-reveal style={{ display:'inline-flex', alignItems:'center', gap:2, padding:'2px 12px', borderRadius:999,
                               border:'1px solid rgba(255,255,255,.18)', background:'rgba(255,255,255,.08)',
                               fontSize:12, fontWeight:700, letterSpacing:.4, marginBottom:4 }}>
-      beta • FitStream v0.1
+      Beta • FitStream v0.1
     </div>
 
     {/* Τίτλος + υπότιτλος */}
