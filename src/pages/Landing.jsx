@@ -4,6 +4,7 @@ import { useApp } from '../hooks/useApp'
 import { supabase } from '../supabaseClient'
 import AuthModal from '../components/auth/AuthModal'
 import RoleSelectionModal from '../components/auth/RoleSelectionModal'
+import Foooter from '../components/Footer'
 
 
 export default function Landing(){
@@ -98,7 +99,7 @@ export default function Landing(){
     <div data-reveal style={{ display:'inline-flex', alignItems:'center', gap:2, padding:'2px 12px', borderRadius:999,
                               border:'1px solid rgba(255,255,255,.18)', background:'rgba(255,255,255,.08)',
                               fontSize:12, fontWeight:700, letterSpacing:.4, marginBottom:4 }}>
-      NEW • FitStream v0.1
+      beta • FitStream v0.1
     </div>
 
     {/* Τίτλος + υπότιτλος */}
@@ -310,5 +311,8 @@ export default function Landing(){
       
      
     </div>
+   
+  
   )
 }
+ <Foooter />
