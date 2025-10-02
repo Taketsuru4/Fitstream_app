@@ -44,9 +44,16 @@ export default function Topbar() {
         <div className="flex items-center justify-between gap-3">
           {/* Left: Brand */}
           <button 
-            onClick={() => window.location.href = '/'} 
+            onClick={() => {
+              if (user) {
+                const path = isTrainer ? '/app/inbox' : '/app/discover'
+                window.location.href = path
+              } else {
+                window.location.href = '/'
+              }
+            }} 
             className="flex items-center gap-2 hover:opacity-90 transition-opacity cursor-pointer bg-transparent border-none p-0"
-            title="Go to Home"
+            title={user ? 'Go to Dashboard' : 'Go to Home'}
           >
             <img src="/logo/fitstream.png" alt="FitStream" className="h-8 w-8 rounded" />
             <span className="text-white text-lg font-extrabold tracking-tight">FitStream</span>

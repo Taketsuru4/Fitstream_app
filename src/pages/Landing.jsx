@@ -113,18 +113,32 @@ export default function Landing(){
     {/* CTA Buttons */}
     <div data-reveal style={{ display:'flex', gap:12, margin:'20px auto', justifyContent:'center', flexWrap:'wrap' }}>
       <button 
-        onClick={() => openAuthModal('signup')}
+        onClick={() => {
+          if (!loading && isAuthenticated && user?.role) {
+            const path = user.role === 'trainer' ? '/app/inbox' : '/app/discover'
+            window.location.href = path
+          } else {
+            openAuthModal('signup')
+          }
+        }}
         className="btn btn-primary"
         style={{ fontSize:'1rem', padding:'1rem 2rem' }}
       >
-        Get Started Free
+        {(!loading && isAuthenticated && user?.role) ? 'Go to App' : 'Get Started Free'}
       </button>
       <button 
-        onClick={() => openAuthModal('login')}
+        onClick={() => {
+          if (!loading && isAuthenticated && user?.role) {
+            const path = user.role === 'trainer' ? '/app/inbox' : '/app/discover'
+            window.location.href = path
+          } else {
+            openAuthModal('login')
+          }
+        }}
         className="btn btn-secondary"
         style={{ fontSize:'1rem', padding:'1rem 2rem' }}
       >
-        Sign In
+        {(!loading && isAuthenticated && user?.role) ? 'Go to App' : 'Sign In'}
       </button>
     </div>
 
@@ -278,18 +292,32 @@ export default function Landing(){
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button 
-              onClick={() => openAuthModal('signup')}
+              onClick={() => {
+                if (!loading && isAuthenticated && user?.role) {
+                  const path = user.role === 'trainer' ? '/app/inbox' : '/app/discover'
+                  window.location.href = path
+                } else {
+                  openAuthModal('signup')
+                }
+              }}
               className="btn btn-primary" 
               style={{ fontSize: '1rem', padding: '1rem 2rem' }}
             >
-              Get Started Free
+              {(!loading && isAuthenticated && user?.role) ? 'Go to App' : 'Get Started Free'}
             </button>
             <button 
-              onClick={() => openAuthModal('login')}
+              onClick={() => {
+                if (!loading && isAuthenticated && user?.role) {
+                  const path = user.role === 'trainer' ? '/app/inbox' : '/app/discover'
+                  window.location.href = path
+                } else {
+                  openAuthModal('login')
+                }
+              }}
               className="btn btn-ghost" 
               style={{ fontSize: '1rem', padding: '1rem 2rem' }}
             >
-              Sign In
+              {(!loading && isAuthenticated && user?.role) ? 'Go to App' : 'Sign In'}
             </button>
           </div>
         </div>
