@@ -1,21 +1,36 @@
 import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../../hooks/useApp'
+import { supabase } from '../../supabaseClient'
 
 export default function OAuthCallback() {
   const navigate = useNavigate()
   const { user, loading, isAuthenticated } = useApp()
 
+  // 1) Exchange the OAuth code for a session (Supabase v2)
   useEffect(() => {
-    // Wait for authentication to complete
+    const url = window.location.href
+    const hasCode = url.includes('code=') || url.includes('access_token=')
+    if (!hasCode) return
+
+    const doExchange = async () => {
+      const { error } = await supabase.auth.exchangeCodeForSession(url)
+      if (error) {
+        console.error('OAuth exchange error:', error)
+        navigate('/?auth_error=oauth_exchange_failed', { replace: true })
+      }
+      // If success, onAuthStateChange in AppContext will kick in and redirect accordingly
+    }
+
+    doExchange()
+  }, [navigate])
+
+  // 2) After session is set, redirect by role
+  useEffect(() => {
     if (!loading) {
       if (isAuthenticated && user) {
-        // Redirect to appropriate dashboard based on user role
         const path = user.role === 'trainer' ? '/app/inbox' : '/app/discover'
         navigate(path, { replace: true })
-      } else {
-        // If not authenticated after OAuth callback, redirect to landing
-        navigate('/', { replace: true })
       }
     }
   }, [loading, isAuthenticated, user, navigate])
