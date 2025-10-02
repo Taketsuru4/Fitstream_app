@@ -4,7 +4,6 @@ import { useApp } from '../hooks/useApp'
 import { supabase } from '../supabaseClient'
 import AuthModal from '../components/auth/AuthModal'
 import RoleSelectionModal from '../components/auth/RoleSelectionModal'
-import DevAuthBypass from '../components/DevAuthBypass'
 
 
 export default function Landing(){
