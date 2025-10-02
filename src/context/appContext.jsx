@@ -418,14 +418,29 @@ export function AppProvider({ children }) {
     if (!user) return { error: 'No user logged in' }
 
     try {
-      const { error } = await supabase
+      // When promoting to trainer, ensure required trainer fields exist so they appear in Discover
+      const updatePayload = { role: newRole }
+      if (newRole === 'trainer') {
+        updatePayload.profile_completion = user.profile_completion ?? 20
+        updatePayload.rating = user.rating ?? 5.0
+        updatePayload.total_reviews = user.total_reviews ?? 0
+        updatePayload.total_sessions = user.total_sessions ?? 0
+        updatePayload.specialties = user.specialties ?? []
+        updatePayload.currency = user.currency ?? 'EUR'
+        updatePayload.years_experience = user.years_experience ?? 0
+        updatePayload.is_verified = user.is_verified ?? false
+      }
+
+      const { error, data } = await supabase
         .from('profiles')
-        .update({ role: newRole })
+        .update(updatePayload)
         .eq('id', user.id)
+        .select('*')
+        .single()
 
       if (error) throw error
 
-      const updatedUser = { ...user, role: newRole }
+      const updatedUser = { ...user, ...data }
       setUser(updatedUser)
       setRole(newRole)
       
