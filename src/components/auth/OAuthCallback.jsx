@@ -18,7 +18,12 @@ export default function OAuthCallback() {
       if (error) {
         console.error('OAuth exchange error:', error)
         navigate('/?auth_error=oauth_exchange_failed', { replace: true })
+        return
       }
+      // Clean query params to avoid re-exchanging on re-render/back-navigation
+      try {
+        window.history.replaceState({}, document.title, '/auth/callback')
+      } catch {}
       // If success, onAuthStateChange in AppContext will kick in and redirect accordingly
     }
 

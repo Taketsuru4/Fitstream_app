@@ -471,18 +471,30 @@ export function AppProvider({ children }) {
   }
 
   const logout = async () => {
-    try { 
-      await supabase.auth.signOut() 
-    } catch (e) { 
-      console.error('Logout error:', e) 
-    }
-    setUser(null)
-    setRole(null)
-    setSession(null)
-    try { 
-      localStorage.removeItem('fitstream:user') 
-    } catch (e) { 
-      console.error('Failed to remove user from localStorage', e) 
+    try {
+      // Show loading briefly to avoid intermediate flashes
+      setLoading(true)
+      // Sign out from Supabase and clear local tokens
+      await supabase.auth.signOut({ scope: 'global' })
+    } catch (e) {
+      console.error('Logout error:', e)
+    } finally {
+      // Clear app state and any cached data
+      setUser(null)
+      setRole(null)
+      setSession(null)
+      try {
+        localStorage.removeItem('fitstream:user')
+        // Extra safety: remove any Supabase cached tokens if present
+        try {
+          Object.keys(localStorage)
+            .filter((k) => k.startsWith('sb-') || k.includes('supabase'))
+            .forEach((k) => localStorage.removeItem(k))
+        } catch {}
+      } catch (e) {
+        console.error('Failed to remove user from localStorage', e)
+      }
+      setLoading(false)
     }
   }
 
