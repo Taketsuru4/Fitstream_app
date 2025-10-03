@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Button, Card, Input, Badge } from '../../components/ui'
 import { TrainerService } from '../../services/trainerService'
+import TrainerProfileModal from '../../components/TrainerProfileModal'
 
 const currency = (n) => `€${Number(n).toFixed(2)}`
 
@@ -11,6 +12,8 @@ export default function Discover() {
   const [trainers, setTrainers] = useState([])
   const [loading, setLoading] = useState(true)
   const [tags, setTags] = useState([])
+  const [selectedTrainer, setSelectedTrainer] = useState(null)
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
 
   // Load trainers from database
   useEffect(() => {
@@ -81,6 +84,16 @@ export default function Discover() {
 
   const toggleTag = (tag) => {
     setActiveTags((prev) => prev.includes(tag) ? prev.filter(t=>t!==tag) : [...prev, tag])
+  }
+
+  const openTrainerProfile = (trainer) => {
+    setSelectedTrainer(trainer)
+    setProfileModalOpen(true)
+  }
+
+  const closeTrainerProfile = () => {
+    setSelectedTrainer(null)
+    setProfileModalOpen(false)
   }
 
   if (loading) {
@@ -195,7 +208,7 @@ export default function Discover() {
             )}
             
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop: 12 }}>
-              <Button variant="secondary" onClick={() => alert(`Viewing ${trainer.full_name}`)}>View Profile</Button>
+              <Button variant="secondary" onClick={() => openTrainerProfile(trainer)}>View Profile</Button>
               <Button onClick={() => window.location.assign('/app/book')}>Book</Button>
             </div>
           </Card>
@@ -219,6 +232,13 @@ export default function Discover() {
           )}
         </div>
       )}
+      
+      {/* Trainer Profile Modal */}
+      <TrainerProfileModal 
+        trainer={selectedTrainer}
+        isOpen={profileModalOpen}
+        onClose={closeTrainerProfile}
+      />
     </section>
   )
 }
