@@ -55,7 +55,7 @@ export default function Topbar() {
             className="flex items-center gap-2 hover:opacity-90 transition-opacity cursor-pointer bg-transparent border-none p-0"
             title={user ? 'Go to Dashboard' : 'Go to Home'}
           >
-            <img src="/logo/fitstream.png" alt="FitStream" className="h-8 w-8 rounded" />
+            <img src="/logo/logo_transparent.png" alt="FitStream" className="h-8 w-8 rounded" />
             <span className="text-white text-lg font-extrabold tracking-tight">FitStream</span>
           </button>
 
