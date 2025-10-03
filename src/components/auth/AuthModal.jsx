@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useApp } from '../../hooks/useApp'
 import Modal from '../Modal'
 
@@ -19,7 +19,20 @@ const AuthModal = ({ isOpen, onClose, defaultTab = 'login' }) => {
   const [resetEmail, setResetEmail] = useState('')
   const [resetLoading, setResetLoading] = useState(false)
 
-  const { signUp, signIn, signInWithProvider, resetPassword } = useApp()
+  const { signUp, signIn, signInWithProvider, resetPassword, isAuthenticated, user, loading: appLoading } = useApp()
+
+  // If a valid session exists when the modal opens, close it and route to app
+  useEffect(() => {
+    if (isOpen && isAuthenticated) {
+      // Close the modal immediately to avoid user interacting while signed in
+      onClose?.()
+      // If role is present, route to the proper app section
+      if (user?.role) {
+        const path = user.role === 'trainer' ? '/app/inbox' : '/app/discover'
+        try { window.location.assign(path) } catch {}
+      }
+    }
+  }, [isOpen, isAuthenticated, user])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -37,6 +50,16 @@ const AuthModal = ({ isOpen, onClose, defaultTab = 'login' }) => {
     try {
       let result
       if (activeTab === 'login') {
+        // If the app is already authenticated, short-circuit to app
+        if (isAuthenticated) {
+          onClose()
+          if (user?.role) {
+            const path = user.role === 'trainer' ? '/app/inbox' : '/app/discover'
+            try { window.location.assign(path) } catch {}
+          }
+          return
+        }
+
         // If role selection is shown, pass the selected role to signin
         result = await signIn(
           formData.email, 
@@ -204,8 +227,10 @@ const AuthModal = ({ isOpen, onClose, defaultTab = 'login' }) => {
                 ? 'bg-cyan-600 text-white'
                 : 'text-gray-400 hover:text-white'
             }`}
+            disabled={isAuthenticated || appLoading}
+            title={isAuthenticated ? 'Already signed in' : undefined}
           >
-            Sign In
+            {isAuthenticated ? 'Signed In' : 'Sign In'}
           </button>
           <button
             onClick={() => switchTab('signup')}
@@ -388,16 +413,16 @@ const AuthModal = ({ isOpen, onClose, defaultTab = 'login' }) => {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || appLoading || (activeTab === 'login' && isAuthenticated)}
             className="w-full py-3 px-4 bg-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? (
+            {loading || appLoading ? (
               <div className="flex items-center justify-center">
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                {activeTab === 'login' ? 'Signing In...' : 'Creating Account...'}
+                {activeTab === 'login' ? (isAuthenticated ? 'Redirecting...' : 'Signing In...') : 'Creating Account...'}
               </div>
             ) : (
-              activeTab === 'login' ? 'Sign In' : 'Create Account'
+              activeTab === 'login' ? (isAuthenticated ? 'Signed In' : 'Sign In') : 'Create Account'
             )}
           </button>
         </form>
