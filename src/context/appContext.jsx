@@ -32,20 +32,9 @@ export function AppProvider({ children }) {
           if (session?.user) {
             await loadUserProfile(session.user)
           } else {
-            // Try to restore from localStorage as fallback
-            try {
-              const cached = localStorage.getItem('fitstream:user')
-              if (cached) {
-                const u = JSON.parse(cached)
-                console.log('Restored user from localStorage:', u)
-                setUser(u)
-                setRole(u.role)
-              } else {
-                console.log('No cached user found')
-              }
-            } catch (e) {
-              console.error('Failed to parse cached user', e)
-            }
+            // No active session: ensure clean state
+            setUser(null)
+            setRole(null)
           }
           console.log('Setting loading to false in initializeAuth')
           setLoading(false)
@@ -74,7 +63,8 @@ export function AppProvider({ children }) {
             console.log('No session, clearing user data')
             setUser(null)
             setRole(null)
-            localStorage.removeItem('fitstream:user')
+            try { sessionStorage.removeItem('fitstream:user') } catch {}
+            try { localStorage.removeItem('fitstream:user') } catch {}
           }
           console.log('Setting loading to false in auth state change')
           setLoading(false)
@@ -116,7 +106,7 @@ export function AppProvider({ children }) {
           }
           setUser(userData)
           setRole(userData.role)
-          localStorage.setItem('fitstream:user', JSON.stringify(userData))
+          sessionStorage.setItem('fitstream:user', JSON.stringify(userData))
           return
         }
         
@@ -156,7 +146,7 @@ export function AppProvider({ children }) {
           
           setUser(userData)
           setRole(userData.role)
-          localStorage.setItem('fitstream:user', JSON.stringify(userData))
+          sessionStorage.setItem('fitstream:user', JSON.stringify(userData))
           return
         }
         
@@ -189,11 +179,11 @@ export function AppProvider({ children }) {
       setUser(userData)
       setRole(userData.role)
       
-      // Cache user data
+      // Cache user data (session-only)
       try {
-        localStorage.setItem('fitstream:user', JSON.stringify(userData))
+        sessionStorage.setItem('fitstream:user', JSON.stringify(userData))
       } catch (e) {
-        console.error('Failed to save user to localStorage', e)
+        console.error('Failed to save user to sessionStorage', e)
       }
     } catch (error) {
       console.error('Unexpected error in loadUserProfile:', error)
@@ -207,7 +197,7 @@ export function AppProvider({ children }) {
       }
       setUser(fallbackUserData)
       setRole(fallbackUserData.role)
-      localStorage.setItem('fitstream:user', JSON.stringify(fallbackUserData))
+      sessionStorage.setItem('fitstream:user', JSON.stringify(fallbackUserData))
     }
   }
 
@@ -444,7 +434,7 @@ export function AppProvider({ children }) {
       setUser(updatedUser)
       setRole(newRole)
       
-      localStorage.setItem('fitstream:user', JSON.stringify(updatedUser))
+      sessionStorage.setItem('fitstream:user', JSON.stringify(updatedUser))
       
       return { error: null }
     } catch (error) {
@@ -462,9 +452,9 @@ export function AppProvider({ children }) {
     setLoading(false) // Immediately set loading to false for dev login
     
     try { 
-      localStorage.setItem('fitstream:user', JSON.stringify(payload)) 
+      sessionStorage.setItem('fitstream:user', JSON.stringify(payload)) 
     } catch (e) { 
-      console.error('Failed to save user to localStorage', e) 
+      console.error('Failed to save user to sessionStorage', e) 
     }
     
     console.log('DEV Login completed, loading set to false')
@@ -484,15 +474,24 @@ export function AppProvider({ children }) {
       setRole(null)
       setSession(null)
       try {
-        localStorage.removeItem('fitstream:user')
-        // Extra safety: remove any Supabase cached tokens if present
+        try { sessionStorage.removeItem('fitstream:user') } catch {}
+        try { localStorage.removeItem('fitstream:user') } catch {}
+        // Extra safety: remove any Supabase cached tokens if present in either storage
         try {
-          Object.keys(localStorage)
-            .filter((k) => k.startsWith('sb-') || k.includes('supabase'))
-            .forEach((k) => localStorage.removeItem(k))
+          const clearKeys = (storage) => {
+            try {
+              Object.keys(storage)
+                .filter((k) => k.startsWith('sb-') || k.includes('supabase'))
+                .forEach((k) => storage.removeItem(k))
+            } catch {}
+          }
+          if (typeof window !== 'undefined') {
+            clearKeys(window.localStorage)
+            clearKeys(window.sessionStorage)
+          }
         } catch {}
       } catch (e) {
-        console.error('Failed to remove user from localStorage', e)
+        console.error('Failed to remove user from storage', e)
       }
       setLoading(false)
     }
@@ -510,7 +509,7 @@ export function AppProvider({ children }) {
     signInWithProvider,
     resetPassword,
     updateUserRole,
-    isAuthenticated: !!user,
+    isAuthenticated: !!(session?.user),
     isTrainer: role === 'trainer',
     isClient: role === 'client'
   }), [user, role, session, loading])
