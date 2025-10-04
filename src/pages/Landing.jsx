@@ -336,11 +336,11 @@ export default function Landing(){
       />
       
     
-      
+       <Foooter />
      
     </div>
+    
    
   
   )
 }
- <Foooter />

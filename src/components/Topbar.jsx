@@ -54,12 +54,16 @@ export default function Topbar() {
             }} 
             className="flex items-center gap-2 hover:opacity-90 transition-opacity cursor-pointer bg-transparent border-none p-0"
             title={user ? 'Go to Dashboard' : 'Go to Home'}
-          >
-            <img src="/logo/logo_transparent.png" alt="FitStream" className="h-8 w-8 rounded" />
+            >
+            <img 
+              src="/logo/logo_transparent.png" 
+              alt="FitStream logo featuring stylized text FitStream on a transparent background, conveying a modern and energetic brand identity" 
+              className="h-18 w-18 rounded" 
+            />
             <span className="text-white text-lg font-extrabold tracking-tight">FitStream</span>
-          </button>
+            </button>
 
-          {/* Center: Nav - Role-based navigation */}
+            {/* Center: Nav - Role-based navigation */}
           <nav className="hidden md:flex items-center gap-4 text-slate-200/90">
             {isTrainer ? (
               // Trainer Navigation
