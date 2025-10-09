@@ -8,6 +8,7 @@ export default function AvailabilityManager() {
   const [newTime, setNewTime] = useState('09:00')
   const [endTime, setEndTime] = useState('10:00')
   const [selectedDay, setSelectedDay] = useState('Monday')
+  const [newDate, setNewDate] = useState('') // YYYY-MM-DD (optional one-off)
   const [saving, setSaving] = useState(false)
 
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -24,17 +25,25 @@ export default function AvailabilityManager() {
       return
     }
 
+    // Determine day number based on either explicit day or chosen date
+    const computedDayNum = newDate
+      ? new Date(`${newDate}T00:00:00`).getDay()
+      : dayNumbers[selectedDay]
+
     setSaving(true)
     try {
       const result = await setAvailabilitySlot(
-        dayNumbers[selectedDay],
+        computedDayNum,
         newTime,
-        endTime
+        endTime,
+        newDate || null
       )
       
       if (result.success) {
         setNewTime('09:00')
         setEndTime('10:00')
+        // Do not reset selectedDay so weekly flows stay quick
+        setNewDate('')
       } else {
         alert('Failed to add slot: ' + result.error)
       }
@@ -120,6 +129,26 @@ export default function AvailabilityManager() {
                 <option key={day} value={day}>{day}</option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+              Date (optional)
+            </label>
+            <input
+              type="date"
+              value={newDate}
+              onChange={e => setNewDate(e.target.value)}
+              style={{
+                width: '100%',
+                height: '40px',
+                borderRadius: '8px',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-primary)',
+                color: 'var(--text-primary)',
+                padding: '0 12px'
+              }}
+            />
           </div>
           
           <div>
@@ -222,6 +251,9 @@ export default function AvailabilityManager() {
                         }}
                       >
                         <span>{slot.startTime} - {slot.endTime}</span>
+                        {!slot.isRecurring && (
+                          <span style={{ fontSize: '12px', opacity: 0.85 }}> • one-off</span>
+                        )}
                         <button
                           onClick={() => handleRemoveSlot(slot.id)}
                           disabled={saving}

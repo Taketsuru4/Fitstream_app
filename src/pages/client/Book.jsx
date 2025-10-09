@@ -331,7 +331,7 @@ export default function Book() {
                   disabled={loading || !selectedSlot}
                   style={{ width: '100%', height: '48px', fontSize: '16px' }}
                 >
-                  {loading ? 'Creating Booking...' : 'Request Booking'}
+                  {loading ? 'Booking...' : 'Book'}
                 </Button>
               </div>
             )}

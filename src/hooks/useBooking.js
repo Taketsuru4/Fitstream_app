@@ -117,7 +117,7 @@ export function useBooking() {
     updateBookingStatus(bookingId, 'completed', notes), [updateBookingStatus])
 
   // Set availability slot (for trainers)
-  const setAvailabilitySlot = useCallback(async (dayOfWeek, startTime, endTime) => {
+  const setAvailabilitySlot = useCallback(async (dayOfWeek, startTime, endTime, specificDate = null) => {
     if (role !== 'trainer' || !user) return { success: false, error: 'Not authorized' }
     
     setLoading(true)
@@ -125,7 +125,7 @@ export function useBooking() {
     
     try {
       const { data, error } = await BookingService.setAvailabilitySlot(
-        user.id, dayOfWeek, startTime, endTime
+        user.id, dayOfWeek, startTime, endTime, { specificDate }
       )
       
       if (error) throw error

@@ -91,20 +91,34 @@ export class BookingService {
   /**
    * Set trainer availability slot
    */
-  static async setAvailabilitySlot(trainerId, dayOfWeek, startTime, endTime) {
+  static async setAvailabilitySlot(trainerId, dayOfWeek, startTime, endTime, options = {}) {
     try {
+      const { specificDate = null, isRecurring: isRecurringOpt } = options || {}
+
+      // Determine recurrence and day_of_week when specificDate is provided
+      let isRecurring = typeof isRecurringOpt === 'boolean' ? isRecurringOpt : (specificDate ? false : true)
+      let dayNum = dayOfWeek
+      if (specificDate && (dayNum === undefined || dayNum === null)) {
+        // Compute day number from specific date (0=Sunday .. 6=Saturday)
+        const d = new Date(`${specificDate}T00:00:00`)
+        dayNum = d.getDay()
+      }
+
+      const payload = {
+        trainer_id: trainerId,
+        day_of_week: dayNum,
+        start_time: startTime,
+        end_time: endTime,
+        is_recurring: isRecurring,
+        updated_at: new Date().toISOString()
+      }
+      if (specificDate) payload.specific_date = specificDate
+
+      const onConflict = isRecurring ? 'trainer_id,day_of_week,start_time' : 'trainer_id,specific_date,start_time'
+
       const { data, error } = await supabase
         .from('availability_slots')
-        .upsert({
-          trainer_id: trainerId,
-          day_of_week: dayOfWeek,
-          start_time: startTime,
-          end_time: endTime,
-          is_recurring: true,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'trainer_id,day_of_week,start_time'
-        })
+        .upsert(payload, { onConflict })
         .select()
 
       if (error) throw error
