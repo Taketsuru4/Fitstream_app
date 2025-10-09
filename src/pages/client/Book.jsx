@@ -25,9 +25,16 @@ export default function Book() {
     trainers.find(t => t.id === selectedTrainerId), [trainers, selectedTrainerId]
   )
 
-  // Load trainers on mount
+  // Load trainers on mount and check for URL params
   useEffect(() => {
     loadTrainers()
+    
+    // Check URL params for preselected trainer
+    const urlParams = new URLSearchParams(window.location.search)
+    const preselectedTrainerId = urlParams.get('trainerId')
+    if (preselectedTrainerId) {
+      setSelectedTrainerId(preselectedTrainerId)
+    }
   }, [])
 
   // Load available slots when trainer or date changes
@@ -59,8 +66,18 @@ export default function Book() {
       if (error) throw error
       
       setTrainers(data || [])
+      
+      // Only auto-select first trainer if no trainer is already selected (from URL or previous state)
       if (data?.length > 0 && !selectedTrainerId) {
-        setSelectedTrainerId(data[0].id)
+        // Check URL params again in case they loaded after component mount
+        const urlParams = new URLSearchParams(window.location.search)
+        const preselectedTrainerId = urlParams.get('trainerId')
+        
+        if (preselectedTrainerId && data.find(t => t.id === preselectedTrainerId)) {
+          setSelectedTrainerId(preselectedTrainerId)
+        } else {
+          setSelectedTrainerId(data[0].id)
+        }
       }
     } catch (error) {
       console.error('Error loading trainers:', error)

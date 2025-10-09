@@ -270,7 +270,7 @@ export default function Discover() {
             
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop: 12 }}>
               <Button variant="secondary" onClick={() => openTrainerProfile(trainer)}>View Profile</Button>
-              <Button onClick={() => window.location.assign('/app/book')}>Book</Button>
+              <Button onClick={() => window.location.assign(`/app/book?trainerId=${trainer.id}`)}>Book</Button>
             </div>
           </Card>
         ))}

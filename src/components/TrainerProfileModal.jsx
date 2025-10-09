@@ -281,7 +281,7 @@ export default function TrainerProfileModal({ trainer, isOpen, onClose, onBook }
               if (onBook) {
                 onBook(trainer)
               } else {
-                window.location.assign('/app/book')
+                window.location.assign(`/app/book?trainerId=${trainer.id}`)
               }
             }}
           >
