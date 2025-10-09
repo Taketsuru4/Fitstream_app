@@ -89,6 +89,48 @@ export class BookingService {
   }
 
   /**
+   * Get trainer's date-based slots for a given date range [startDate, endDate]
+   * Returns a map keyed by ISO date (YYYY-MM-DD) to an array of slots
+   */
+  static async getTrainerSlotsForRange(trainerId, startDate, endDate) {
+    try {
+      if (!trainerId || !startDate || !endDate) {
+        return { data: {}, error: null }
+      }
+
+      let query = supabase
+        .from('availability_slots')
+        .select('id, trainer_id, specific_date, start_time, end_time, is_recurring')
+        .eq('trainer_id', trainerId)
+        .not('specific_date', 'is', null)
+        .gte('specific_date', startDate)
+        .lte('specific_date', endDate)
+        .order('specific_date', { ascending: true })
+        .order('start_time', { ascending: true })
+
+      const { data, error } = await query
+      if (error) throw error
+
+      const map = {}
+      ;(data || []).forEach(slot => {
+        const dateKey = slot.specific_date
+        if (!map[dateKey]) map[dateKey] = []
+        map[dateKey].push({
+          id: slot.id,
+          startTime: slot.start_time,
+          endTime: slot.end_time,
+          isRecurring: slot.is_recurring === true ? true : false
+        })
+      })
+
+      return { data: map, error: null }
+    } catch (error) {
+      console.error('Error fetching trainer slots for range:', error)
+      return { data: {}, error }
+    }
+  }
+
+  /**
    * Set trainer availability slot
    */
   static async setAvailabilitySlot(trainerId, dayOfWeek, startTime, endTime, options = {}) {
@@ -114,11 +156,10 @@ export class BookingService {
       }
       if (specificDate) payload.specific_date = specificDate
 
-      const onConflict = isRecurring ? 'trainer_id,day_of_week,start_time' : 'trainer_id,specific_date,start_time'
-
+      // For now, use INSERT to avoid onConflict issues until partial indexes are set up
       const { data, error } = await supabase
         .from('availability_slots')
-        .upsert(payload, { onConflict })
+        .insert(payload)
         .select()
 
       if (error) throw error
