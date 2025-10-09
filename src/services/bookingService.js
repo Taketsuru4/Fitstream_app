@@ -131,6 +131,76 @@ export class BookingService {
   }
 
   /**
+   * Get availability summary for calendar view
+   * Returns a map: { 'YYYY-MM-DD': { available: boolean, slotsCount: number, bookedCount: number } }
+   */
+  static async getAvailabilitySummary(trainerId, startDate, endDate) {
+    try {
+      if (!trainerId || !startDate || !endDate) {
+        return { data: {}, error: null }
+      }
+
+      // Get slots with specific dates in the range
+      const slotsQuery = supabase
+        .from('availability_slots')
+        .select('specific_date, start_time, end_time')
+        .eq('trainer_id', trainerId)
+        .not('specific_date', 'is', null)
+        .gte('specific_date', startDate)
+        .lte('specific_date', endDate)
+
+      // Get bookings in the same range
+      const bookingsQuery = supabase
+        .from('bookings')
+        .select('booking_date, start_time, end_time, status')
+        .eq('trainer_id', trainerId)
+        .gte('booking_date', startDate)
+        .lte('booking_date', endDate)
+        .not('status', 'eq', 'cancelled')
+
+      const [slotsResult, bookingsResult] = await Promise.all([slotsQuery, bookingsQuery])
+      
+      if (slotsResult.error) throw slotsResult.error
+      if (bookingsResult.error) throw bookingsResult.error
+
+      const slots = slotsResult.data || []
+      const bookings = bookingsResult.data || []
+
+      // Build summary map
+      const summary = {}
+      
+      // Count slots per date
+      slots.forEach(slot => {
+        const dateKey = slot.specific_date
+        if (!summary[dateKey]) {
+          summary[dateKey] = { slotsCount: 0, bookedCount: 0, available: false }
+        }
+        summary[dateKey].slotsCount++
+      })
+
+      // Count bookings per date
+      bookings.forEach(booking => {
+        const dateKey = booking.booking_date
+        if (!summary[dateKey]) {
+          summary[dateKey] = { slotsCount: 0, bookedCount: 0, available: false }
+        }
+        summary[dateKey].bookedCount++
+      })
+
+      // Determine availability (has slots and some slots are not booked)
+      Object.keys(summary).forEach(dateKey => {
+        const s = summary[dateKey]
+        s.available = s.slotsCount > 0 && s.bookedCount < s.slotsCount
+      })
+
+      return { data: summary, error: null }
+    } catch (error) {
+      console.error('Error fetching availability summary:', error)
+      return { data: {}, error }
+    }
+  }
+
+  /**
    * Set trainer availability slot
    */
   static async setAvailabilitySlot(trainerId, dayOfWeek, startTime, endTime, options = {}) {

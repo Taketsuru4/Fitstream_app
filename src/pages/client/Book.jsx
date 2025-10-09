@@ -3,6 +3,8 @@ import { useApp } from '../../hooks/useApp'
 import { useBooking } from '../../hooks/useBooking'
 import { Button, Card, Input, Badge } from '../../components/ui'
 import { supabase } from '../../supabaseClient'
+import { BookingService } from '../../services/bookingService'
+import AvailabilityCalendar from '../../components/AvailabilityCalendar'
 
 const currency = (n) => `€${Number(n || 0).toFixed(2)}`
 
@@ -20,6 +22,8 @@ export default function Book() {
   const [availableSlots, setAvailableSlots] = useState([])
   const [loading, setLoading] = useState(false)
   const [loadingSlots, setLoadingSlots] = useState(false)
+  const [calendarAvailability, setCalendarAvailability] = useState({})
+  const [loadingCalendar, setLoadingCalendar] = useState(false)
 
   const selectedTrainer = useMemo(() => 
     trainers.find(t => t.id === selectedTrainerId), [trainers, selectedTrainerId]
@@ -45,6 +49,15 @@ export default function Book() {
       setAvailableSlots([])
     }
   }, [selectedTrainerId, selectedDate])
+
+  // Load calendar availability when trainer changes
+  useEffect(() => {
+    if (selectedTrainerId) {
+      loadCalendarAvailability()
+    } else {
+      setCalendarAvailability({})
+    }
+  }, [selectedTrainerId])
 
   // Set default date to tomorrow
   useEffect(() => {
@@ -95,6 +108,31 @@ export default function Book() {
       setAvailableSlots([])
     } finally {
       setLoadingSlots(false)
+    }
+  }
+
+  const loadCalendarAvailability = async () => {
+    if (!selectedTrainerId) return
+    
+    setLoadingCalendar(true)
+    try {
+      // Get current month range
+      const today = new Date()
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+      const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0) // 2 months ahead
+      
+      const startDate = startOfMonth.toISOString().split('T')[0]
+      const endDate = endOfMonth.toISOString().split('T')[0]
+      
+      const { data, error } = await BookingService.getAvailabilitySummary(selectedTrainerId, startDate, endDate)
+      if (error) throw error
+      
+      setCalendarAvailability(data || {})
+    } catch (error) {
+      console.error('Error loading calendar availability:', error)
+      setCalendarAvailability({})
+    } finally {
+      setLoadingCalendar(false)
     }
   }
 
@@ -170,7 +208,7 @@ export default function Book() {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)' }}>
+      <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: '1fr' }}>
         {/* Booking Form */}
         <Card title="Schedule Your Session">
           <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -205,54 +243,68 @@ export default function Book() {
               </select>
             </div>
 
-            {/* Date Selection */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            {/* Calendar & Session Type Selection */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2rem', alignItems: 'start' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                  Date
+                  Select Date
                 </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => {
-                    setSelectedDate(e.target.value)
+                <AvailabilityCalendar
+                  selectedDate={selectedDate}
+                  onDateSelect={(date) => {
+                    setSelectedDate(date)
                     setSelectedSlot('') // Reset slot when date changes
                   }}
-                  min={new Date().toISOString().split('T')[0]}
-                  style={{
-                    width: '100%',
-                    height: '48px',
-                    borderRadius: '8px',
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-primary)',
-                    color: 'var(--text-primary)',
-                    padding: '0 12px',
-                    fontSize: '16px'
-                  }}
+                  availabilityMap={calendarAvailability}
+                  loading={loadingCalendar}
+                  minDate={new Date().toISOString().split('T')[0]}
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                  Session Type
-                </label>
-                <select
-                  value={sessionType}
-                  onChange={(e) => setSessionType(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: '48px',
+              <div style={{ minWidth: '200px' }}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                    Session Type
+                  </label>
+                  <select
+                    value={sessionType}
+                    onChange={(e) => setSessionType(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '48px',
+                      borderRadius: '8px',
+                      background: 'var(--bg-secondary)',
+                      border: '1px solid var(--border-primary)',
+                      color: 'var(--text-primary)',
+                      padding: '0 12px',
+                      fontSize: '16px'
+                    }}
+                  >
+                    <option value="virtual">Virtual Session</option>
+                    <option value="in_person">In-Person Session</option>
+                  </select>
+                </div>
+
+                {/* Selected Date Display */}
+                {selectedDate && (
+                  <div style={{
+                    padding: '1rem',
+                    background: 'var(--bg-tertiary)',
+                    border: '1px solid var(--border-secondary)',
                     borderRadius: '8px',
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-primary)',
-                    color: 'var(--text-primary)',
-                    padding: '0 12px',
-                    fontSize: '16px'
-                  }}
-                >
-                  <option value="virtual">Virtual Session</option>
-                  <option value="in_person">In-Person Session</option>
-                </select>
+                    marginBottom: '1rem'
+                  }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Selected Date</div>
+                    <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                      {new Date(selectedDate + 'T00:00:00').toLocaleDateString(undefined, { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -260,31 +312,74 @@ export default function Book() {
             <div>
               <label style={{ display: 'block', fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
                 Available Times
+                {selectedDate && (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '12px', marginLeft: '8px' }}>
+                    for {new Date(selectedDate + 'T00:00:00').toLocaleDateString()}
+                  </span>
+                )}
               </label>
               
               {loadingSlots ? (
-                <div style={{ padding: '2rem', textAlign: 'center' }}>
-                  <div style={{ width: '24px', height: '24px', border: '2px solid var(--accent-primary)', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 0.5rem' }}></div>
+                <div style={{ 
+                  padding: '2rem', 
+                  textAlign: 'center',
+                  border: '1px solid var(--border-primary)', 
+                  borderRadius: '8px',
+                  background: 'var(--bg-secondary)'
+                }}>
+                  <div style={{ 
+                    width: '24px', 
+                    height: '24px', 
+                    border: '2px solid var(--accent-primary)', 
+                    borderTop: '2px solid transparent', 
+                    borderRadius: '50%', 
+                    animation: 'spin 1s linear infinite', 
+                    margin: '0 auto 0.5rem' 
+                  }}></div>
                   <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Loading available times...</span>
                 </div>
               ) : availableSlots.length === 0 ? (
                 <div style={{ 
-                  padding: '1rem', 
+                  padding: '2rem', 
                   textAlign: 'center', 
                   border: '1px dashed var(--border-primary)', 
                   borderRadius: '8px',
+                  background: 'var(--bg-secondary)',
                   color: 'var(--text-secondary)'
                 }}>
-                  {selectedTrainerId && selectedDate ? 'No available slots for this date' : 'Please select a trainer and date'}
+                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>🕐</div>
+                  {selectedTrainerId && selectedDate 
+                    ? 'No available slots for this date' 
+                    : 'Select a date to see available times'
+                  }
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', 
+                  gap: '0.75rem',
+                  padding: '1rem',
+                  border: '1px solid var(--border-primary)', 
+                  borderRadius: '8px',
+                  background: 'var(--bg-secondary)'
+                }}>
                   {availableSlots.map(slot => (
                     <Button
                       key={slot.startTime}
-                      variant={selectedSlot === slot.startTime ? 'primary' : 'secondary'}
+                      variant={selectedSlot === slot.startTime ? 'primary' : 'ghost'}
                       size="sm"
                       onClick={() => setSelectedSlot(slot.startTime)}
+                      style={{
+                        height: '40px',
+                        fontSize: '14px',
+                        fontWeight: selectedSlot === slot.startTime ? '600' : '500',
+                        border: selectedSlot === slot.startTime 
+                          ? '2px solid var(--accent-primary)' 
+                          : '1px solid var(--border-primary)',
+                        background: selectedSlot === slot.startTime 
+                          ? 'var(--accent-primary)' 
+                          : 'rgba(255,255,255,0.05)'
+                      }}
                     >
                       {slot.startTime}
                     </Button>
