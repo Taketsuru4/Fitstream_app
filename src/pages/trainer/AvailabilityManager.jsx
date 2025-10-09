@@ -1,34 +1,41 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useBooking } from '../../hooks/useBooking'
+import { useApp } from '../../hooks/useApp'
+import { BookingService } from '../../services/bookingService'
 import { Button, Card } from '../../components/ui'
 
 export default function AvailabilityManager() {
-  const { availability, loading, error, setAvailabilitySlot, removeAvailabilitySlot, loadAvailability } = useBooking()
+  const { availability, loading, error, setAvailabilitySlot, removeAvailabilitySlot } = useBooking()
+  const { user } = useApp()
   
   const [newTime, setNewTime] = useState('09:00')
   const [endTime, setEndTime] = useState('10:00')
-  const [selectedDay, setSelectedDay] = useState('Monday')
-  const [newDate, setNewDate] = useState('') // YYYY-MM-DD (optional one-off)
+  const [newDate, setNewDate] = useState('') // YYYY-MM-DD (required)
   const [saving, setSaving] = useState(false)
 
+  // Weekly view state (current week)
+  const [weekSlots, setWeekSlots] = useState({}) // { 'YYYY-MM-DD': [ {id,startTime,endTime,isRecurring} ] }
+  const [weekLoading, setWeekLoading] = useState(false)
+  const [weekError, setWeekError] = useState(null)
+
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-  const dayNumbers = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 }
 
   const handleAddSlot = async () => {
+    if (!newDate) {
+      alert('Please select a date')
+      return
+    }
     if (!newTime || !endTime) {
       alert('Please select both start and end times')
       return
     }
-
     if (newTime >= endTime) {
       alert('End time must be after start time')
       return
     }
 
-    // Determine day number based on either explicit day or chosen date
-    const computedDayNum = newDate
-      ? new Date(`${newDate}T00:00:00`).getDay()
-      : dayNumbers[selectedDay]
+    // Compute day num from date
+    const computedDayNum = new Date(`${newDate}T00:00:00`).getDay()
 
     setSaving(true)
     try {
@@ -36,14 +43,14 @@ export default function AvailabilityManager() {
         computedDayNum,
         newTime,
         endTime,
-        newDate || null
+        newDate
       )
       
       if (result.success) {
         setNewTime('09:00')
         setEndTime('10:00')
-        // Do not reset selectedDay so weekly flows stay quick
         setNewDate('')
+        await refreshWeekSlots()
       } else {
         alert('Failed to add slot: ' + result.error)
       }
@@ -63,6 +70,8 @@ export default function AvailabilityManager() {
       const result = await removeAvailabilitySlot(slotId)
       if (!result.success) {
         alert('Failed to remove slot: ' + result.error)
+      } else {
+        await refreshWeekSlots()
       }
     } catch (err) {
       console.error('Error removing slot:', err)
@@ -72,16 +81,55 @@ export default function AvailabilityManager() {
     }
   }
 
-  if (loading && !availability) {
-    return (
-      <div className="container">
-        <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading availability...</p>
-        </div>
-      </div>
-    )
+  // Helpers for current week view
+  const toISODate = (d) => d.toISOString().split('T')[0]
+  const startOfWeek = (date = new Date()) => {
+    // Monday as start of week
+    const d = new Date(date)
+    const day = d.getDay()
+    const diff = (day === 0 ? -6 : 1) - day
+    d.setDate(d.getDate() + diff)
+    d.setHours(0,0,0,0)
+    return d
   }
+  const addDays = (date, n) => {
+    const d = new Date(date)
+    d.setDate(d.getDate() + n)
+    return d
+  }
+  const formatLabel = (date) => {
+    const intl = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: '2-digit', month: 'short' })
+    return intl.format(date)
+  }
+
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(new Date())
+    return Array.from({ length: 7 }, (_, i) => addDays(start, i))
+  }, [])
+
+  const refreshWeekSlots = async () => {
+    if (!user?.id) return
+    try {
+      setWeekLoading(true)
+      setWeekError(null)
+      const start = toISODate(weekDays[0])
+      const end = toISODate(weekDays[6])
+      const { data, error } = await BookingService.getTrainerSlotsForRange(user.id, start, end)
+      if (error) throw error
+      setWeekSlots(data || {})
+    } catch (e) {
+      console.error('Failed to load weekly slots:', e)
+      setWeekError(e.message)
+      setWeekSlots({})
+    } finally {
+      setWeekLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    refreshWeekSlots()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   return (
     <div className="container" style={{ maxWidth: '1000px' }}>
@@ -110,35 +158,13 @@ export default function AvailabilityManager() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', alignItems: 'end' }}>
           <div>
             <label style={{ display: 'block', fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-              Day
-            </label>
-            <select 
-              value={selectedDay} 
-              onChange={e => setSelectedDay(e.target.value)}
-              style={{
-                width: '100%',
-                height: '40px',
-                borderRadius: '8px',
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-primary)',
-                color: 'var(--text-primary)',
-                padding: '0 12px'
-              }}
-            >
-              {dayNames.map(day => (
-                <option key={day} value={day}>{day}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-              Date (optional)
+              Date
             </label>
             <input
               type="date"
               value={newDate}
               onChange={e => setNewDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
               style={{
                 width: '100%',
                 height: '40px',
@@ -193,7 +219,7 @@ export default function AvailabilityManager() {
           
           <Button 
             onClick={handleAddSlot} 
-            disabled={saving || loading}
+            disabled={saving || weekLoading}
             style={{ height: '40px' }}
           >
             {saving ? 'Adding...' : 'Add Slot'}
@@ -201,17 +227,31 @@ export default function AvailabilityManager() {
         </div>
       </Card>
 
-      {/* Weekly Schedule Display */}
-      <Card title="Weekly Schedule">
+      {/* Weekly Schedule Display (current week) */}
+      <Card title="This Week's Schedule">
+        {weekError && (
+          <div style={{ 
+            background: 'rgba(239, 68, 68, 0.1)', 
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '8px',
+            padding: '12px',
+            marginBottom: '1rem',
+            color: '#f87171'
+          }}>
+            Error: {weekError}
+          </div>
+        )}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
           gap: '1.5rem'
         }}>
-          {dayNames.map(day => {
-            const daySlots = availability[day] || []
+          {weekDays.map((dateObj) => {
+            const iso = toISODate(dateObj)
+            const label = formatLabel(dateObj)
+            const slots = weekSlots[iso] || []
             return (
-              <div key={day} style={{ 
+              <div key={iso} style={{ 
                 border: '1px solid var(--border-primary)', 
                 borderRadius: '12px', 
                 padding: '1rem',
@@ -223,11 +263,13 @@ export default function AvailabilityManager() {
                   fontWeight: '600',
                   color: 'var(--text-primary)'
                 }}>
-                  {day}
+                  {label}
                 </h3>
                 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {daySlots.length === 0 ? (
+                  {weekLoading ? (
+                    <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Loading...</span>
+                  ) : slots.length === 0 ? (
                     <span style={{ 
                       fontSize: '14px', 
                       color: 'var(--text-muted)', 
@@ -236,9 +278,9 @@ export default function AvailabilityManager() {
                       No availability set
                     </span>
                   ) : (
-                    daySlots.map(slot => (
+                    slots.map(slot => (
                       <div
-                        key={slot.id || `${slot.startTime}-${slot.endTime}`}
+                        key={slot.id || `${iso}-${slot.startTime}-${slot.endTime}`}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -251,9 +293,6 @@ export default function AvailabilityManager() {
                         }}
                       >
                         <span>{slot.startTime} - {slot.endTime}</span>
-                        {!slot.isRecurring && (
-                          <span style={{ fontSize: '12px', opacity: 0.85 }}> • one-off</span>
-                        )}
                         <button
                           onClick={() => handleRemoveSlot(slot.id)}
                           disabled={saving}
