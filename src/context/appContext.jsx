@@ -14,13 +14,13 @@ export function AppProvider({ children }) {
   useEffect(() => {
     let mounted = true
 
-    // Fallback timeout to prevent infinite loading (10 seconds max)
+    // Fallback timeout to prevent infinite loading
     const loadingTimeout = setTimeout(() => {
-      if (mounted) {
-        console.warn('Loading timeout reached, forcing loading to false')
+      if (mounted && loading) {
+        console.warn('Loading timeout reached after 8s, forcing loading to false')
         setLoading(false)
       }
-    }, 10000)
+    }, 8000)
 
     // Get initial session
     const initializeAuth = async () => {
@@ -32,9 +32,20 @@ export function AppProvider({ children }) {
           if (session?.user) {
             await loadUserProfile(session.user)
           } else {
-            // No active session: ensure clean state
-            setUser(null)
-            setRole(null)
+            // Try to restore from localStorage as fallback
+            try {
+              const cached = localStorage.getItem('fitstream:user')
+              if (cached) {
+                const u = JSON.parse(cached)
+                console.log('Restored user from localStorage:', u)
+                setUser(u)
+                setRole(u.role)
+              } else {
+                console.log('No cached user found')
+              }
+            } catch (e) {
+              console.error('Failed to parse cached user', e)
+            }
           }
           console.log('Setting loading to false in initializeAuth')
           setLoading(false)
@@ -63,8 +74,7 @@ export function AppProvider({ children }) {
             console.log('No session, clearing user data')
             setUser(null)
             setRole(null)
-            try { sessionStorage.removeItem('fitstream:user') } catch {}
-            try { localStorage.removeItem('fitstream:user') } catch {}
+            localStorage.removeItem('fitstream:user')
           }
           console.log('Setting loading to false in auth state change')
           setLoading(false)
@@ -106,7 +116,7 @@ export function AppProvider({ children }) {
           }
           setUser(userData)
           setRole(userData.role)
-          sessionStorage.setItem('fitstream:user', JSON.stringify(userData))
+          localStorage.setItem('fitstream:user', JSON.stringify(userData))
           return
         }
         
@@ -146,7 +156,7 @@ export function AppProvider({ children }) {
           
           setUser(userData)
           setRole(userData.role)
-          sessionStorage.setItem('fitstream:user', JSON.stringify(userData))
+          localStorage.setItem('fitstream:user', JSON.stringify(userData))
           return
         }
         
@@ -179,11 +189,11 @@ export function AppProvider({ children }) {
       setUser(userData)
       setRole(userData.role)
       
-      // Cache user data (session-only)
+      // Cache user data
       try {
-        sessionStorage.setItem('fitstream:user', JSON.stringify(userData))
+        localStorage.setItem('fitstream:user', JSON.stringify(userData))
       } catch (e) {
-        console.error('Failed to save user to sessionStorage', e)
+        console.error('Failed to save user to localStorage', e)
       }
     } catch (error) {
       console.error('Unexpected error in loadUserProfile:', error)
@@ -197,7 +207,7 @@ export function AppProvider({ children }) {
       }
       setUser(fallbackUserData)
       setRole(fallbackUserData.role)
-      sessionStorage.setItem('fitstream:user', JSON.stringify(fallbackUserData))
+      localStorage.setItem('fitstream:user', JSON.stringify(fallbackUserData))
     }
   }
 
@@ -408,33 +418,18 @@ export function AppProvider({ children }) {
     if (!user) return { error: 'No user logged in' }
 
     try {
-      // When promoting to trainer, ensure required trainer fields exist so they appear in Discover
-      const updatePayload = { role: newRole }
-      if (newRole === 'trainer') {
-        updatePayload.profile_completion = user.profile_completion ?? 20
-        updatePayload.rating = user.rating ?? 5.0
-        updatePayload.total_reviews = user.total_reviews ?? 0
-        updatePayload.total_sessions = user.total_sessions ?? 0
-        updatePayload.specialties = user.specialties ?? []
-        updatePayload.currency = user.currency ?? 'EUR'
-        updatePayload.years_experience = user.years_experience ?? 0
-        updatePayload.is_verified = user.is_verified ?? false
-      }
-
-      const { error, data } = await supabase
+      const { error } = await supabase
         .from('profiles')
-        .update(updatePayload)
+        .update({ role: newRole })
         .eq('id', user.id)
-        .select('*')
-        .single()
 
       if (error) throw error
 
-      const updatedUser = { ...user, ...data }
+      const updatedUser = { ...user, role: newRole }
       setUser(updatedUser)
       setRole(newRole)
       
-      sessionStorage.setItem('fitstream:user', JSON.stringify(updatedUser))
+      localStorage.setItem('fitstream:user', JSON.stringify(updatedUser))
       
       return { error: null }
     } catch (error) {
@@ -452,48 +447,27 @@ export function AppProvider({ children }) {
     setLoading(false) // Immediately set loading to false for dev login
     
     try { 
-      sessionStorage.setItem('fitstream:user', JSON.stringify(payload)) 
+      localStorage.setItem('fitstream:user', JSON.stringify(payload)) 
     } catch (e) { 
-      console.error('Failed to save user to sessionStorage', e) 
+      console.error('Failed to save user to localStorage', e) 
     }
     
     console.log('DEV Login completed, loading set to false')
   }
 
   const logout = async () => {
-    try {
-      // Show loading briefly to avoid intermediate flashes
-      setLoading(true)
-      // Sign out from Supabase and clear local tokens
-      await supabase.auth.signOut({ scope: 'global' })
-    } catch (e) {
-      console.error('Logout error:', e)
-    } finally {
-      // Clear app state and any cached data
-      setUser(null)
-      setRole(null)
-      setSession(null)
-      try {
-        try { sessionStorage.removeItem('fitstream:user') } catch {}
-        try { localStorage.removeItem('fitstream:user') } catch {}
-        // Extra safety: remove any Supabase cached tokens if present in either storage
-        try {
-          const clearKeys = (storage) => {
-            try {
-              Object.keys(storage)
-                .filter((k) => k.startsWith('sb-') || k.includes('supabase'))
-                .forEach((k) => storage.removeItem(k))
-            } catch {}
-          }
-          if (typeof window !== 'undefined') {
-            clearKeys(window.localStorage)
-            clearKeys(window.sessionStorage)
-          }
-        } catch {}
-      } catch (e) {
-        console.error('Failed to remove user from storage', e)
-      }
-      setLoading(false)
+    try { 
+      await supabase.auth.signOut() 
+    } catch (e) { 
+      console.error('Logout error:', e) 
+    }
+    setUser(null)
+    setRole(null)
+    setSession(null)
+    try { 
+      localStorage.removeItem('fitstream:user') 
+    } catch (e) { 
+      console.error('Failed to remove user from localStorage', e) 
     }
   }
 
@@ -509,7 +483,7 @@ export function AppProvider({ children }) {
     signInWithProvider,
     resetPassword,
     updateUserRole,
-    isAuthenticated: !!(session?.user),
+    isAuthenticated: !!user,
     isTrainer: role === 'trainer',
     isClient: role === 'client'
   }), [user, role, session, loading])

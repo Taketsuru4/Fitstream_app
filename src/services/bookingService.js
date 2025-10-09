@@ -47,6 +47,48 @@ export class BookingService {
   }
 
   /**
+   * Get availability for multiple trainers in a single query
+   * Returns a map: { [trainerId]: { [dayName]: Array<{id, startTime, endTime, isRecurring}> } }
+   */
+  static async getAvailabilityForTrainers(trainerIds = []) {
+    try {
+      if (!Array.isArray(trainerIds) || trainerIds.length === 0) {
+        return { data: {}, error: null }
+      }
+
+      const { data, error } = await supabase
+        .from('availability_slots')
+        .select('id, trainer_id, day_of_week, start_time, end_time, is_recurring')
+        .in('trainer_id', trainerIds)
+        .order('day_of_week', { ascending: true })
+        .order('start_time', { ascending: true })
+
+      if (error) throw error
+
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+      const map = {}
+
+      ;(data || []).forEach(slot => {
+        const tId = slot.trainer_id
+        const dayName = dayNames[slot.day_of_week]
+        if (!map[tId]) map[tId] = {}
+        if (!map[tId][dayName]) map[tId][dayName] = []
+        map[tId][dayName].push({
+          id: slot.id,
+          startTime: slot.start_time,
+          endTime: slot.end_time,
+          isRecurring: slot.is_recurring
+        })
+      })
+
+      return { data: map, error: null }
+    } catch (error) {
+      console.error('Error fetching availability for trainers:', error)
+      return { data: {}, error }
+    }
+  }
+
+  /**
    * Set trainer availability slot
    */
   static async setAvailabilitySlot(trainerId, dayOfWeek, startTime, endTime) {

@@ -2,8 +2,16 @@ import React, { useState, useEffect } from 'react'
 import { Button, Card, Input, Badge } from '../../components/ui'
 import { TrainerService } from '../../services/trainerService'
 import TrainerProfileModal from '../../components/TrainerProfileModal'
+import { BookingService } from '../../services/bookingService'
 
 const currency = (n) => `€${Number(n).toFixed(2)}`
+
+const formatTime = (t) => {
+  if (!t) return ''
+  // Expecting HH:MM or HH:MM:SS; display HH:MM
+  const parts = String(t).split(':')
+  return `${parts[0].padStart(2,'0')}:${parts[1].padStart(2,'0')}`
+}
 
 export default function Discover() {
   const [q, setQ] = useState('')
@@ -49,7 +57,7 @@ export default function Discover() {
       })
 
       // Convert to the shape this page expects
-      const trainersToShow = (results || []).map(t => ({
+      let trainersToShow = (results || []).map(t => ({
         id: t.id,
         full_name: t.name,
         avatar_url: t.photo,
@@ -61,8 +69,38 @@ export default function Discover() {
         hourly_rate: t.price,
         currency: t.currency,
         bio: t.bio,
-        years_experience: t.experience
+        years_experience: t.experience,
+        availability: null,
+        availability_preview: []
       }))
+
+      // Fetch availability for all trainers in one query and attach
+      const trainerIds = trainersToShow.map(t => t.id)
+      const { data: availabilityMap } = await BookingService.getAvailabilityForTrainers(trainerIds)
+
+      // Prepare a compact preview: up to 6 slot chips across the week
+      const buildPreview = (scheduleObj) => {
+        const preview = []
+        if (!scheduleObj) return preview
+        for (const [day, slots] of Object.entries(scheduleObj)) {
+          slots.forEach(s => {
+            if (preview.length < 6) {
+              preview.push({ day, start: s.startTime, end: s.endTime })
+            }
+          })
+          if (preview.length >= 6) break
+        }
+        return preview
+      }
+
+      trainersToShow = trainersToShow.map(t => {
+        const schedule = availabilityMap?.[t.id] || null
+        return {
+          ...t,
+          availability: schedule,
+          availability_preview: buildPreview(schedule)
+        }
+      })
 
       setTrainers(trainersToShow)
 
@@ -206,6 +244,29 @@ export default function Discover() {
                 {trainer.bio}
               </p>
             )}
+
+            {/* Availability preview */}
+            <div style={{ marginTop: 10 }}>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>Availability</div>
+              {trainer.availability_preview && trainer.availability_preview.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {trainer.availability_preview.map((slot, i) => (
+                    <span key={i} style={{
+                      border: '1px solid rgba(255,255,255,.22)',
+                      background: 'rgba(255,255,255,.08)',
+                      color: '#fff',
+                      padding: '2px 8px',
+                      borderRadius: 999,
+                      fontSize: 12
+                    }}>
+                      {slot.day.slice(0,3)} {formatTime(slot.start)}–{formatTime(slot.end)}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: '#94a3b8' }}>No slots set</div>
+              )}
+            </div>
             
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop: 12 }}>
               <Button variant="secondary" onClick={() => openTrainerProfile(trainer)}>View Profile</Button>
