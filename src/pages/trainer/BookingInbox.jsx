@@ -368,7 +368,7 @@ export default function BookingInbox() {
               <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
                 {statusFilter !== 'all' || timeFilter !== 'all' 
                   ? 'Try adjusting your filters to see more bookings'
-                  : 'When clients book sessions, they'll appear here'
+                  : 'When clients book sessions, they will appear here'
                 }
               </p>
               {(statusFilter !== 'all' || timeFilter !== 'all') ? (
@@ -653,127 +653,6 @@ const BookingCard = ({ booking, onConfirm, onCancel, onComplete, formatDate, for
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-              <div key={booking.id} style={{ 
-                border: '1px solid var(--border-primary)', 
-                borderRadius: '8px', 
-                padding: '1.5rem',
-                background: 'var(--bg-secondary)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                    {/* Client Avatar */}
-                    <div style={{ 
-                      width: '48px', 
-                      height: '48px', 
-                      borderRadius: '50%', 
-                      background: 'var(--bg-tertiary)', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      overflow: 'hidden'
-                    }}>
-                      {booking.client?.avatar_url ? (
-                        <img 
-                          src={booking.client.avatar_url} 
-                          alt={booking.client.full_name}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <span style={{ fontSize: '1.5rem' }}>👤</span>
-                      )}
-                    </div>
-                    
-                    {/* Booking Details */}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
-                        {booking.client?.full_name || 'Unknown Client'}
-                      </div>
-                      
-                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
-                        {formatDate(booking.booking_date)} at {formatTime(booking.start_time)}
-                      </div>
-                      
-                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                        {booking.session_type === 'virtual' ? '💻 Virtual' : '🏢 In-person'} • {currency(booking.total_price)}
-                      </div>
-                      
-                      {booking.client_notes && (
-                        <div style={{ 
-                          fontSize: '14px', 
-                          color: 'var(--text-muted)', 
-                          fontStyle: 'italic',
-                          marginTop: '0.5rem',
-                          padding: '0.5rem',
-                          background: 'var(--bg-tertiary)',
-                          borderRadius: '4px'
-                        }}>
-                          Note: {booking.client_notes}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Status & Actions */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'end', gap: '0.5rem' }}>
-                    <Badge 
-                      variant={
-                        booking.status === 'pending' ? 'warning' :
-                        booking.status === 'confirmed' ? 'success' :
-                        booking.status === 'cancelled' ? 'error' :
-                        booking.status === 'completed' ? 'success' :
-                        'default'
-                      }
-                    >
-                      {booking.status}
-                    </Badge>
-                    
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      {booking.status === 'pending' && (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => handleConfirmBooking(booking.id)}
-                          >
-                            Confirm
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleCancelBooking(booking.id)}
-                          >
-                            Decline
-                          </Button>
-                        </>
-                      )}
-                      
-                      {booking.status === 'confirmed' && (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => handleCompleteBooking(booking.id)}
-                          >
-                            Mark Complete
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleCancelBooking(booking.id)}
-                          >
-                            Cancel
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
     </div>
   )
 }
