@@ -168,8 +168,8 @@ export default function Discover() {
       })
     }
     
-    // Navigate to messages
-    navigate('/app/messages')
+    // Navigate to messages with trainer ID
+    navigate(`/app/messages?trainerId=${trainer.id}`)
   }
 
   if (loading) {

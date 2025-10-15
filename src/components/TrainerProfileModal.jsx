@@ -312,10 +312,10 @@ export default function TrainerProfileModal({ trainer, isOpen, onClose, onBook }
                 console.error('setMessages not available in context')
               }
               
-              // Close modal and navigate to messages
-              console.log('Navigating to /app/messages')
+              // Close modal and navigate to messages with trainer ID
+              console.log('Navigating to /app/messages with trainerId:', trainer.id)
               onClose()
-              navigate('/app/messages')
+              navigate(`/app/messages?trainerId=${trainer.id}`)
             }}
           >
             💬 Message

@@ -3,6 +3,7 @@ import { Button, Card, Input, Badge, Textarea } from '../../components/ui'
 import { useApp } from '../../hooks/useApp'
 import Modal from '../../components/Modal'
 import { supabase } from '../../supabaseClient'
+import { useSearchParams } from 'react-router-dom'
 
 /**
  * Mobile‑first Messages with threads + chat + New Message modal
@@ -10,6 +11,7 @@ import { supabase } from '../../supabaseClient'
  */
 export default function Messages(){
   const { messages = [], setMessages, user } = useApp()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [q, setQ] = useState('')
   const [openList, setOpenList] = useState(false)
   const [openNew, setOpenNew] = useState(false)
@@ -51,6 +53,21 @@ export default function Messages(){
       supabase.removeAllChannels()
     }
   }, [user?.id])
+
+  // Auto-start thread from URL params
+  useEffect(() => {
+    const trainerId = searchParams.get('trainerId')
+    if (trainerId && user?.id && trainers.length > 0) {
+      console.log('Auto-starting thread with trainer:', trainerId)
+      const trainer = trainers.find(t => t.id === trainerId)
+      if (trainer) {
+        console.log('Found trainer:', trainer)
+        startThread(trainer)
+        // Remove the URL param after using it
+        setSearchParams({})
+      }
+    }
+  }, [trainers, user?.id, searchParams])
 
   const loadMessages = async () => {
     if (!user?.id) return
