@@ -13,6 +13,8 @@ import BookingInbox from './trainer/BookingInbox'
 import AvailabilityManager from './trainer/AvailabilityManager'
 import Payouts from './trainer/Payouts'
 import ProfileEditor from './trainer/ProfileEditor'
+import WorkoutLogger from './trainer/WorkoutLogger'
+import WorkoutHistory from './client/WorkoutHistory'
 import ResetPassword from '../components/auth/ResetPassword'
 import OAuthCallback from '../components/auth/OAuthCallback'
 import { AppProvider } from '../context/appContext'
@@ -60,6 +62,7 @@ function AppShell() {
               <Route path="book" element={<Book />} />
               <Route path="messages" element={<Messages />} />
               <Route path="progress" element={<Progress />} />
+              <Route path="workouts" element={<WorkoutHistory />} />
               <Route path="payments" element={<Payments />} />
               <Route path="settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="discover" replace />} />
@@ -68,6 +71,7 @@ function AppShell() {
             <>
               <Route path="inbox" element={<BookingInbox />} />
               <Route path="availability" element={<AvailabilityManager />} />
+              <Route path="workouts" element={<WorkoutLogger />} />
               <Route path="messages" element={<Messages />} />
               <Route path="payouts" element={<Payouts />} />
               <Route path="profile" element={<ProfileEditor />} />

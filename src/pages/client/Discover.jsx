@@ -3,6 +3,8 @@ import { Button, Card, Input, Badge } from '../../components/ui'
 import { TrainerService } from '../../services/trainerService'
 import TrainerProfileModal from '../../components/TrainerProfileModal'
 import { BookingService } from '../../services/bookingService'
+import { useApp } from '../../hooks/useApp'
+import { useNavigate } from 'react-router-dom'
 
 const currency = (n) => `€${Number(n).toFixed(2)}`
 
@@ -14,6 +16,8 @@ const formatTime = (t) => {
 }
 
 export default function Discover() {
+  const { user, setMessages } = useApp()
+  const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [activeTags, setActiveTags] = useState([])
   const [sort, setSort] = useState('rating') // rating | price-asc | price-desc | experience
@@ -132,6 +136,40 @@ export default function Discover() {
   const closeTrainerProfile = () => {
     setSelectedTrainer(null)
     setProfileModalOpen(false)
+  }
+
+  const startConversation = (trainer) => {
+    if (!user?.id || !trainer?.id) {
+      alert('Please make sure you are logged in')
+      return
+    }
+    
+    // Create thread ID with consistent participant ordering
+    const participants = [user.id, trainer.id].sort()
+    const threadId = `dm-${participants.join('-')}`
+    
+    // Create a system message to initialize the thread
+    const now = Date.now()
+    const seed = { 
+      id: `${now}-seed`, 
+      threadId, 
+      with: trainer.full_name || trainer.name, 
+      role: 'system', 
+      text: `Started conversation with ${trainer.full_name || trainer.name}`, 
+      ts: now 
+    }
+    
+    // Add to messages context if available
+    if (setMessages) {
+      setMessages(prev => {
+        // Check if thread already exists
+        const exists = prev.some(m => m.threadId === threadId)
+        return exists ? prev : [...prev, seed]
+      })
+    }
+    
+    // Navigate to messages
+    navigate('/app/messages')
   }
 
   if (loading) {
@@ -268,8 +306,9 @@ export default function Discover() {
               )}
             </div>
             
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop: 12 }}>
-              <Button variant="secondary" onClick={() => openTrainerProfile(trainer)}>View Profile</Button>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginTop: 12 }}>
+              <Button variant="secondary" onClick={() => openTrainerProfile(trainer)}>Profile</Button>
+              <Button variant="secondary" onClick={() => startConversation(trainer)}>Message</Button>
               <Button onClick={() => window.location.assign(`/app/book?trainerId=${trainer.id}`)}>Book</Button>
             </div>
           </Card>

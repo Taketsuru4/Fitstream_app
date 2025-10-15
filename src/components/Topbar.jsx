@@ -72,6 +72,7 @@ export default function Topbar() {
                   <Link to="/app/inbox" className="hover:text-white transition">📥 Inbox</Link>
                 </NotificationBadge>
                 <Link to="/app/availability" className="hover:text-white transition">📅 Availability</Link>
+                <Link to="/app/workouts" className="hover:text-white transition">💪 Workouts</Link>
                 <Link to="/app/profile" className="hover:text-white transition">👤 Profile</Link>
                 <Link to="/app/payouts" className="hover:text-white transition">💰 Payouts</Link>
                 <Link to="/app/messages" className="hover:text-white transition">💬 Messages</Link>
@@ -82,6 +83,7 @@ export default function Topbar() {
               <>
                 <Link to="/app/discover" className="hover:text-white transition">🔍 Discover</Link>
                 <Link to="/app/book" className="hover:text-white transition">📅 Book Session</Link>
+                <Link to="/app/workouts" className="hover:text-white transition">💪 Workouts</Link>
                 <Link to="/app/progress" className="hover:text-white transition">📊 Progress</Link>
                 <Link to="/app/payments" className="hover:text-white transition">💳 Payments</Link>
                 <Link to="/app/messages" className="hover:text-white transition">💬 Messages</Link>
@@ -140,6 +142,7 @@ export default function Topbar() {
                   <Link to="/app/inbox" className="hover:text-white transition whitespace-nowrap">📥 Inbox</Link>
                 </NotificationBadge>
                 <Link to="/app/availability" className="hover:text-white transition whitespace-nowrap">📅 Schedule</Link>
+                <Link to="/app/workouts" className="hover:text-white transition whitespace-nowrap">💪 Workouts</Link>
                 <Link to="/app/profile" className="hover:text-white transition whitespace-nowrap">👤 Profile</Link>
                 <Link to="/app/payouts" className="hover:text-white transition whitespace-nowrap">💰 Payouts</Link>
                 <Link to="/app/messages" className="hover:text-white transition whitespace-nowrap">💬 Messages</Link>
@@ -150,6 +153,7 @@ export default function Topbar() {
               <>
                 <Link to="/app/discover" className="hover:text-white transition whitespace-nowrap">🔍 Discover</Link>
                 <Link to="/app/book" className="hover:text-white transition whitespace-nowrap">📅 Book</Link>
+                <Link to="/app/workouts" className="hover:text-white transition whitespace-nowrap">💪 Workouts</Link>
                 <Link to="/app/progress" className="hover:text-white transition whitespace-nowrap">📊 Progress</Link>
                 <Link to="/app/payments" className="hover:text-white transition whitespace-nowrap">💳 Payments</Link>
                 <Link to="/app/messages" className="hover:text-white transition whitespace-nowrap">💬 Messages</Link>

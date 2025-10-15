@@ -9,6 +9,7 @@ export function AppProvider({ children }) {
   const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState(null)
+  const [messages, setMessages] = useState([])
 
   // Initialize auth listener and restore session
   useEffect(() => {
@@ -476,6 +477,8 @@ export function AppProvider({ children }) {
     role,
     session,
     loading,
+    messages,
+    setMessages,
     login, // backward compatibility
     logout,
     signUp,
@@ -486,7 +489,7 @@ export function AppProvider({ children }) {
     isAuthenticated: !!user,
     isTrainer: role === 'trainer',
     isClient: role === 'client'
-  }), [user, role, session, loading])
+  }), [user, role, session, loading, messages])
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>
 }

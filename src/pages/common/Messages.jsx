@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Card, Input, Badge, Textarea } from '../../components/ui'
 import { useApp } from '../../hooks/useApp'
 import Modal from '../../components/Modal'
+import { supabase } from '../../supabaseClient'
 
 /**
  * Mobile‑first Messages with threads + chat + New Message modal
@@ -13,6 +14,8 @@ export default function Messages(){
   const [openList, setOpenList] = useState(false)
   const [openNew, setOpenNew] = useState(false)
   const [searchTrainer, setSearchTrainer] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   // Threads
   const threads = useMemo(() => {
@@ -38,6 +41,105 @@ export default function Messages(){
   useEffect(()=>{ if (!activeId && threads[0]) setActiveId(threads[0].id) },[threads, activeId])
   const active = useMemo(()=> threads.find(t=>t.id===activeId) || threads[0], [threads, activeId])
 
+  // Load messages on mount
+  useEffect(() => {
+    loadMessages()
+    subscribeToMessages()
+    return () => {
+      supabase.removeAllChannels()
+    }
+  }, [user?.id])
+
+  const loadMessages = async () => {
+    if (!user?.id) return
+    
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          sender:sender_id(id, name, avatar_url),
+          recipient:recipient_id(id, name, avatar_url)
+        `)
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .order('created_at', { ascending: true })
+      
+      if (error) throw error
+      
+      // Transform Supabase data to match existing format
+      const transformedMessages = data.map(msg => ({
+        id: msg.id,
+        threadId: `dm-${[msg.sender_id, msg.recipient_id].sort().join('-')}`,
+        with: msg.sender_id === user.id ? msg.recipient?.name : msg.sender?.name,
+        role: msg.sender_id === user.id ? 'me' : 'them',
+        text: msg.content,
+        ts: new Date(msg.created_at).getTime(),
+        sender: msg.sender,
+        recipient: msg.recipient
+      }))
+      
+      setMessages(transformedMessages)
+    } catch (err) {
+      console.error('Error loading messages:', err)
+      setError('Failed to load messages')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const subscribeToMessages = () => {
+    if (!user?.id) return
+    
+    const channel = supabase
+      .channel('messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `or(sender_id.eq.${user.id},recipient_id.eq.${user.id})`
+        },
+        async (payload) => {
+          // Fetch full message with user data
+          const { data } = await supabase
+            .from('messages')
+            .select(`
+              *,
+              sender:sender_id(id, name, avatar_url),
+              recipient:recipient_id(id, name, avatar_url)
+            `)
+            .eq('id', payload.new.id)
+            .single()
+          
+          if (data) {
+            const newMessage = {
+              id: data.id,
+              threadId: `dm-${[data.sender_id, data.recipient_id].sort().join('-')}`,
+              with: data.sender_id === user.id ? data.recipient?.name : data.sender?.name,
+              role: data.sender_id === user.id ? 'me' : 'them',
+              text: data.content,
+              ts: new Date(data.created_at).getTime(),
+              sender: data.sender,
+              recipient: data.recipient
+            }
+            
+            setMessages(prev => {
+              // Avoid duplicates
+              const exists = prev.some(m => m.id === newMessage.id)
+              return exists ? prev : [...prev, newMessage]
+            })
+            
+            setTimeout(scrollToBottom, 100)
+          }
+        }
+      )
+      .subscribe()
+    
+    return () => supabase.removeChannel(channel)
+  }
+
   const filteredThreads = useMemo(()=>{
     const s = q.trim().toLowerCase()
     if (!s) return threads
@@ -50,14 +152,62 @@ export default function Messages(){
   const scrollToBottom = () => endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   useEffect(scrollToBottom, [active])
 
-  const send = () => {
+  const send = async () => {
     const text = draft.trim()
-    if (!text) return
-    const now = Date.now()
-    const entry = { id: `${now}`, threadId: active?.id || 'general', with: active?.with || 'Conversation', role: 'me', text, ts: now }
-    setMessages(prev => [...prev, entry])
-    setDraft('')
-    setTimeout(scrollToBottom, 0)
+    if (!text || !user?.id || !active) return
+    
+    // Extract recipient from thread ID or find trainer
+    let recipientId = null
+    
+    if (active.id.startsWith('dm-')) {
+      // Extract recipient from thread participants
+      const participants = active.id.replace('dm-', '').split('-')
+      recipientId = participants.find(id => id !== user.id)
+    } else {
+      // Find trainer by name for legacy threads
+      const trainer = TRAINERS.find(t => t.name === active.with)
+      recipientId = trainer?.id
+    }
+    
+    if (!recipientId) {
+      setError('Unable to send message - recipient not found')
+      return
+    }
+    
+    try {
+      setLoading(true)
+      setError('')
+      
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: user.id,
+          recipient_id: recipientId,
+          content: text,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+      
+      if (error) throw error
+      
+      // Message will be added via real-time subscription
+      setDraft('')
+      setTimeout(scrollToBottom, 100)
+      
+    } catch (err) {
+      console.error('Error sending message:', err)
+      setError('Failed to send message. Please try again.')
+      
+      // Fallback to local state for demo purposes
+      const now = Date.now()
+      const entry = { id: `${now}`, threadId: active.id, with: active.with, role: 'me', text, ts: now }
+      setMessages(prev => [...prev, entry])
+      setDraft('')
+      setTimeout(scrollToBottom, 0)
+    } finally {
+      setLoading(false)
+    }
   }
   const onKeyDown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }
 
@@ -70,13 +220,32 @@ export default function Messages(){
   }, [TRAINERS, searchTrainer])
 
   const startThread = (trainer) => {
+    if (!user?.id || !trainer?.id) return
+    
+    // Create thread ID with consistent participant ordering
+    const participants = [user.id, trainer.id].sort()
+    const threadId = `dm-${participants.join('-')}`
+    
+    // Check if thread already exists
+    const existingThread = threads.find(t => t.id === threadId)
+    if (existingThread) {
+      setActiveId(threadId)
+      setOpenNew(false)
+      return
+    }
+    
+    // Create a system message to initialize the thread
     const now = Date.now()
-    const threadId = `dm-${trainer.id}`
-    const seed = { id: `${now}-seed`, threadId, with: trainer.name, role: 'system', text: `New conversation with ${trainer.name}`, ts: now }
-    setMessages(prev => {
-      const exists = prev.some(m => m.threadId === threadId)
-      return exists ? prev : [...prev, seed]
-    })
+    const seed = { 
+      id: `${now}-seed`, 
+      threadId, 
+      with: trainer.name, 
+      role: 'system', 
+      text: `Started conversation with ${trainer.name}`, 
+      ts: now 
+    }
+    
+    setMessages(prev => [...prev, seed])
     setActiveId(threadId)
     setOpenNew(false)
     setTimeout(scrollToBottom, 0)
@@ -111,10 +280,10 @@ export default function Messages(){
           title={(
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
               <span>Messages</span>
-              <Button size="sm" onClick={()=>setOpenNew(true)}>New Message</Button>
+              <Button size="sm" onClick={()=>setOpenNew(true)} disabled={loading}>New Message</Button>
             </div>
           )}
-          subtitle="Your conversations"
+          subtitle={loading ? "Loading conversations..." : "Your conversations"}
           style={{ position:'sticky', top: 64 }}
         >
           <div style={{ marginBottom: 10 }}>
@@ -159,11 +328,20 @@ export default function Messages(){
                   placeholder="Write a message… (Enter to send, Shift+Enter for line)"
                   className="chat-input"
                 />
-                <Button onClick={send} disabled={!draft.trim()}>Send</Button>
+                <Button onClick={send} disabled={!draft.trim() || loading}>
+                  {loading ? 'Sending...' : 'Send'}
+                </Button>
               </div>
             </div>
           )}
         >
+          {error && (
+            <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 8, padding: 12, marginBottom: 12, color: '#fca5a5' }}>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>Error</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>{error}</div>
+            </div>
+          )}
+          
           <div style={{ maxHeight: 400, overflow:'auto', display:'grid', gap:8, paddingBottom: 12 }}>
             {(active?.msgs || []).map(m => (
               <div key={m.id} style={{ justifySelf: m.role==='me' ? 'end' : 'start', background: m.role==='me' ? 'rgba(6,182,212,.20)' : 'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.14)', borderRadius: 12, padding: '8px 10px', maxWidth: '80%' }}>

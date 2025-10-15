@@ -1,5 +1,7 @@
 import React from 'react'
 import { Button, Badge } from './ui'
+import { useApp } from '../hooks/useApp'
+import { useNavigate } from 'react-router-dom'
 
 const Modal = ({ open, onClose, title, children }) => {
   if (!open) return null
@@ -81,6 +83,9 @@ const Modal = ({ open, onClose, title, children }) => {
 }
 
 export default function TrainerProfileModal({ trainer, isOpen, onClose, onBook }) {
+  const { user, setMessages } = useApp()
+  const navigate = useNavigate()
+  
   if (!trainer) return null
 
   const formatPrice = (rate, currency) => {
@@ -269,8 +274,38 @@ export default function TrainerProfileModal({ trainer, isOpen, onClose, onBook }
           <Button 
             variant="secondary" 
             onClick={() => {
-              // TODO: Add message functionality
-              alert('Messaging feature coming soon!')
+              if (!user?.id || !trainer?.id) {
+                alert('Please make sure you are logged in')
+                return
+              }
+              
+              // Create thread ID with consistent participant ordering
+              const participants = [user.id, trainer.id].sort()
+              const threadId = `dm-${participants.join('-')}`
+              
+              // Create a system message to initialize the thread
+              const now = Date.now()
+              const seed = { 
+                id: `${now}-seed`, 
+                threadId, 
+                with: trainer.full_name || trainer.name, 
+                role: 'system', 
+                text: `Started conversation with ${trainer.full_name || trainer.name}`, 
+                ts: now 
+              }
+              
+              // Add to messages context if available
+              if (setMessages) {
+                setMessages(prev => {
+                  // Check if thread already exists
+                  const exists = prev.some(m => m.threadId === threadId)
+                  return exists ? prev : [...prev, seed]
+                })
+              }
+              
+              // Close modal and navigate to messages
+              onClose()
+              navigate('/app/messages')
             }}
           >
             💬 Message
