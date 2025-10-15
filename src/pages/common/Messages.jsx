@@ -229,22 +229,38 @@ export default function Messages(){
 
   const send = async () => {
     const text = draft.trim()
-    if (!text || !user?.id || !active) return
+    console.log('Send function called', { text, userId: user?.id, active })
+    
+    if (!text || !user?.id || !active) {
+      console.log('Send cancelled - missing data', { hasText: !!text, hasUser: !!user?.id, hasActive: !!active })
+      return
+    }
     
     // Extract recipient from thread ID or find trainer
     let recipientId = null
     
+    console.log('Active thread ID:', active.id)
+    
     if (active.id.startsWith('dm-')) {
       // Extract recipient from thread participants
       const participants = active.id.replace('dm-', '').split('-')
+      console.log('Thread participants:', participants)
+      console.log('Current user ID:', user.id)
       recipientId = participants.find(id => id !== user.id)
+      console.log('Found recipientId from thread:', recipientId)
     } else {
       // Find trainer by name for legacy threads
+      console.log('Legacy thread, searching trainers by name:', active.with)
+      console.log('Available trainers:', trainers)
       const trainer = trainers.find(t => t.name === active.with)
+      console.log('Found trainer:', trainer)
       recipientId = trainer?.id
     }
     
+    console.log('Final recipientId:', recipientId)
+    
     if (!recipientId) {
+      console.error('No recipient ID found!')
       setError('Unable to send message - recipient not found')
       return
     }
@@ -253,18 +269,27 @@ export default function Messages(){
       setLoading(true)
       setError('')
       
+      const messageData = {
+        sender_id: user.id,
+        recipient_id: recipientId,
+        content: text,
+        created_at: new Date().toISOString()
+      }
+      
+      console.log('Inserting message to Supabase:', messageData)
+      
       const { data, error } = await supabase
         .from('messages')
-        .insert({
-          sender_id: user.id,
-          recipient_id: recipientId,
-          content: text,
-          created_at: new Date().toISOString()
-        })
+        .insert(messageData)
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Supabase insert error:', error)
+        throw error
+      }
+      
+      console.log('Message sent successfully:', data)
       
       // Message will be added via real-time subscription
       setDraft('')
@@ -272,7 +297,8 @@ export default function Messages(){
       
     } catch (err) {
       console.error('Error sending message:', err)
-      setError('Failed to send message. Please try again.')
+      console.error('Error details:', err.message, err.details, err.hint)
+      setError(`Failed to send message: ${err.message || 'Please try again.'}`)
       
       // Fallback to local state for demo purposes
       const now = Date.now()
