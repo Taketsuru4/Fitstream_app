@@ -243,10 +243,20 @@ export default function Messages(){
     
     if (active.id.startsWith('dm-')) {
       // Extract recipient from thread participants
-      const participants = active.id.replace('dm-', '').split('-')
-      console.log('Thread participants:', participants)
+      // Thread format: dm-{uuid1}-{uuid2} where UUIDs are 36 chars with dashes
+      const threadWithoutPrefix = active.id.replace('dm-', '')
+      console.log('Thread without dm- prefix:', threadWithoutPrefix)
+      
+      // UUIDs are 36 characters long (including dashes: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+      // So we split based on position, not dashes
+      const uuid1 = threadWithoutPrefix.substring(0, 36)
+      const uuid2 = threadWithoutPrefix.substring(37) // Skip the separating dash
+      
+      console.log('UUID 1:', uuid1)
+      console.log('UUID 2:', uuid2)
       console.log('Current user ID:', user.id)
-      recipientId = participants.find(id => id !== user.id)
+      
+      recipientId = (uuid1 === user.id) ? uuid2 : uuid1
       console.log('Found recipientId from thread:', recipientId)
     } else {
       // Find trainer by name for legacy threads
