@@ -61,8 +61,8 @@ export default function Messages(){
         .from('messages')
         .select(`
           *,
-          sender:sender_id(id, name, avatar_url),
-          recipient:recipient_id(id, name, avatar_url)
+          sender:sender_id(id, full_name, avatar_url),
+          recipient:recipient_id(id, full_name, avatar_url)
         `)
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
         .order('created_at', { ascending: true })
@@ -70,10 +70,10 @@ export default function Messages(){
       if (error) throw error
       
       // Transform Supabase data to match existing format
-      const transformedMessages = data.map(msg => ({
+      const transformedMessages = (data || []).map(msg => ({
         id: msg.id,
         threadId: `dm-${[msg.sender_id, msg.recipient_id].sort().join('-')}`,
-        with: msg.sender_id === user.id ? msg.recipient?.name : msg.sender?.name,
+        with: msg.sender_id === user.id ? msg.recipient?.full_name : msg.sender?.full_name,
         role: msg.sender_id === user.id ? 'me' : 'them',
         text: msg.content,
         ts: new Date(msg.created_at).getTime(),
@@ -109,8 +109,8 @@ export default function Messages(){
             .from('messages')
             .select(`
               *,
-              sender:sender_id(id, name, avatar_url),
-              recipient:recipient_id(id, name, avatar_url)
+              sender:sender_id(id, full_name, avatar_url),
+              recipient:recipient_id(id, full_name, avatar_url)
             `)
             .eq('id', payload.new.id)
             .single()
@@ -119,7 +119,7 @@ export default function Messages(){
             const newMessage = {
               id: data.id,
               threadId: `dm-${[data.sender_id, data.recipient_id].sort().join('-')}`,
-              with: data.sender_id === user.id ? data.recipient?.name : data.sender?.name,
+              with: data.sender_id === user.id ? data.recipient?.full_name : data.sender?.full_name,
               role: data.sender_id === user.id ? 'me' : 'them',
               text: data.content,
               ts: new Date(data.created_at).getTime(),
@@ -143,26 +143,56 @@ export default function Messages(){
   }
 
   const loadTrainers = async () => {
+    if (!user?.id) {
+      console.log('No user ID, skipping trainer load')
+      return
+    }
+    
     try {
-      let { data, error }
+      console.log('Loading trainers/clients for user:', user.id, 'role:', user.role)
+      let data, error
       
       if (user?.role === 'client') {
         // For clients, load trainers
-        ({ data, error } = await supabase
+        console.log('User is client, loading trainers...')
+        const result = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, specialties, rating, total_reviews, location, hourly_rate, currency')
+          .select('id, full_name, avatar_url, specialties, rating, total_reviews, location, hourly_rate, currency, email')
           .eq('role', 'trainer')
-          .order('rating', { ascending: false }))
-      } else {
+          .order('rating', { ascending: false })
+        
+        data = result.data
+        error = result.error
+      } else if (user?.role === 'trainer') {
         // For trainers, load clients
-        ({ data, error } = await supabase
+        console.log('User is trainer, loading clients...')
+        const result = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url')
+          .select('id, full_name, avatar_url, email')
           .eq('role', 'client')
-          .order('full_name', { ascending: true }))
+          .order('full_name', { ascending: true })
+        
+        data = result.data
+        error = result.error
+      } else {
+        // If role is not set, load all users except current
+        console.log('User role not set, loading all profiles...')
+        const result = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url, specialties, rating, total_reviews, location, hourly_rate, currency, email, role')
+          .neq('id', user.id)
+          .order('full_name', { ascending: true })
+        
+        data = result.data
+        error = result.error
       }
       
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error:', error)
+        throw error
+      }
+      
+      console.log('Loaded profiles:', data?.length || 0)
       
       // Transform to expected format
       const transformedTrainers = (data || []).map(profile => ({
@@ -178,6 +208,7 @@ export default function Messages(){
         remote: true
       }))
       
+      console.log('Transformed trainers:', transformedTrainers)
       setTrainers(transformedTrainers)
     } catch (err) {
       console.error('Error loading trainers/clients:', err)

@@ -274,7 +274,10 @@ export default function TrainerProfileModal({ trainer, isOpen, onClose, onBook }
           <Button 
             variant="secondary" 
             onClick={() => {
+              console.log('Message button clicked', { user, trainer })
+              
               if (!user?.id || !trainer?.id) {
+                console.error('Missing user or trainer ID', { userId: user?.id, trainerId: trainer?.id })
                 alert('Please make sure you are logged in')
                 return
               }
@@ -282,6 +285,7 @@ export default function TrainerProfileModal({ trainer, isOpen, onClose, onBook }
               // Create thread ID with consistent participant ordering
               const participants = [user.id, trainer.id].sort()
               const threadId = `dm-${participants.join('-')}`
+              console.log('Creating thread:', threadId)
               
               // Create a system message to initialize the thread
               const now = Date.now()
@@ -293,17 +297,23 @@ export default function TrainerProfileModal({ trainer, isOpen, onClose, onBook }
                 text: `Started conversation with ${trainer.full_name || trainer.name}`, 
                 ts: now 
               }
+              console.log('Seed message:', seed)
               
               // Add to messages context if available
               if (setMessages) {
+                console.log('Adding message to context')
                 setMessages(prev => {
                   // Check if thread already exists
                   const exists = prev.some(m => m.threadId === threadId)
+                  console.log('Thread exists:', exists)
                   return exists ? prev : [...prev, seed]
                 })
+              } else {
+                console.error('setMessages not available in context')
               }
               
               // Close modal and navigate to messages
+              console.log('Navigating to /app/messages')
               onClose()
               navigate('/app/messages')
             }}
