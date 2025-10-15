@@ -9,13 +9,14 @@ import { supabase } from '../../supabaseClient'
  * Tweaks: semi‑transparent composer, modal blur, safe‑area padding, FABs above composer
  */
 export default function Messages(){
-  const { messages = [], setMessages, user, TRAINERS = [] } = useApp()
+  const { messages = [], setMessages, user } = useApp()
   const [q, setQ] = useState('')
   const [openList, setOpenList] = useState(false)
   const [openNew, setOpenNew] = useState(false)
   const [searchTrainer, setSearchTrainer] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [trainers, setTrainers] = useState([])
 
   // Threads
   const threads = useMemo(() => {
@@ -41,9 +42,10 @@ export default function Messages(){
   useEffect(()=>{ if (!activeId && threads[0]) setActiveId(threads[0].id) },[threads, activeId])
   const active = useMemo(()=> threads.find(t=>t.id===activeId) || threads[0], [threads, activeId])
 
-  // Load messages on mount
+  // Load messages and trainers on mount
   useEffect(() => {
     loadMessages()
+    loadTrainers()
     subscribeToMessages()
     return () => {
       supabase.removeAllChannels()
@@ -140,6 +142,48 @@ export default function Messages(){
     return () => supabase.removeChannel(channel)
   }
 
+  const loadTrainers = async () => {
+    try {
+      let { data, error }
+      
+      if (user?.role === 'client') {
+        // For clients, load trainers
+        ({ data, error } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url, specialties, rating, total_reviews, location, hourly_rate, currency')
+          .eq('role', 'trainer')
+          .order('rating', { ascending: false }))
+      } else {
+        // For trainers, load clients
+        ({ data, error } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .eq('role', 'client')
+          .order('full_name', { ascending: true }))
+      }
+      
+      if (error) throw error
+      
+      // Transform to expected format
+      const transformedTrainers = (data || []).map(profile => ({
+        id: profile.id,
+        name: profile.full_name || profile.email || 'User',
+        photo: profile.avatar_url,
+        specialties: profile.specialties || [],
+        rating: profile.rating || 5.0,
+        reviews: profile.total_reviews || 0,
+        location: profile.location || 'Location TBD',
+        price: profile.hourly_rate,
+        currency: profile.currency || 'EUR',
+        remote: true
+      }))
+      
+      setTrainers(transformedTrainers)
+    } catch (err) {
+      console.error('Error loading trainers/clients:', err)
+    }
+  }
+
   const filteredThreads = useMemo(()=>{
     const s = q.trim().toLowerCase()
     if (!s) return threads
@@ -165,7 +209,7 @@ export default function Messages(){
       recipientId = participants.find(id => id !== user.id)
     } else {
       // Find trainer by name for legacy threads
-      const trainer = TRAINERS.find(t => t.name === active.with)
+      const trainer = trainers.find(t => t.name === active.with)
       recipientId = trainer?.id
     }
     
@@ -214,10 +258,10 @@ export default function Messages(){
   // New Message modal helpers
   const trainerList = useMemo(() => {
     const s = searchTrainer.trim().toLowerCase()
-    let list = TRAINERS
-    if (s) list = list.filter(t => t.name.toLowerCase().includes(s) || t.specialties.join(' ').toLowerCase().includes(s) || t.location.toLowerCase().includes(s))
+    let list = trainers
+    if (s) list = list.filter(t => t.name.toLowerCase().includes(s) || (t.specialties || []).join(' ').toLowerCase().includes(s) || t.location.toLowerCase().includes(s))
     return list
-  }, [TRAINERS, searchTrainer])
+  }, [trainers, searchTrainer])
 
   const startThread = (trainer) => {
     if (!user?.id || !trainer?.id) return
@@ -361,9 +405,9 @@ export default function Messages(){
       </div>
 
       {/* New Message modal */}
-      <Modal open={openNew} onClose={()=>setOpenNew(false)} title="Start a new message">
+      <Modal open={openNew} onClose={()=>setOpenNew(false)} title={`Start a new message${user?.role === 'trainer' ? ' with client' : ' with trainer'}`}>
         <div className="modal-panel" style={{ display:'grid', gap:10, padding:12 }}>
-          <Input placeholder="Search trainers…" value={searchTrainer} onChange={(e)=>setSearchTrainer(e.target.value)} />
+          <Input placeholder={`Search ${user?.role === 'trainer' ? 'clients' : 'trainers'}…`} value={searchTrainer} onChange={(e)=>setSearchTrainer(e.target.value)} />
           <div style={{ display:'grid', gap:10, gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))' }}>
             {trainerList.map(t => (
               <div key={t.id} className="modal-card" style={{ padding:12 }}>
@@ -378,7 +422,7 @@ export default function Messages(){
                 </div>
               </div>
             ))}
-            {trainerList.length===0 && <div style={{ color:'#738ebc' }}>No trainers found.</div>}
+            {trainerList.length===0 && <div style={{ color:'#738ebc' }}>No {user?.role === 'trainer' ? 'clients' : 'trainers'} found.</div>}
           </div>
         </div>
       </Modal>
